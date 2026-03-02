@@ -51,7 +51,8 @@ export async function POST(req: NextRequest) {
     if (!audio || !(audio as Buffer).length) {
       return NextResponse.json({ error: 'No audio generated' }, { status: 500 })
     }
-    return new NextResponse(audio as Buffer, {
+    // BodyInit accepts Uint8Array; Buffer is compatible - cast for strict TS
+    return new NextResponse(audio as Uint8Array, {
       headers: {
         'Content-Type': 'audio/mpeg',
       },
