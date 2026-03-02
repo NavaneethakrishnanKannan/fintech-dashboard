@@ -1,0 +1,101 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String?
+  createdAt DateTime @default(now())
+  loans     Loan[]
+  expenses  Expense[]
+  investments Investment[]
+  incomes     Income[]
+  chatMessages ChatMessage[]
+  goals        Goal[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  role      String   // user | assistant
+  content   String
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Goal {
+  id          String   @id @default(cuid())
+  title       String
+  targetAmount Float
+  currentAmount Float  @default(0)
+  targetDate   DateTime?
+  createdAt   DateTime @default(now())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  email     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Loan {
+  id                String   @id @default(cuid())
+  name              String
+  principal         Float
+  interest          Float   // annual interest rate (%)
+  tenure            Int     // remaining months (months left)
+  totalTenureMonths Int?    // original total tenure in months (optional)
+  emi               Float
+  startDate         DateTime
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+}
+
+model Expense {
+  id        String   @id @default(cuid())
+  amount     Float
+  category   String
+  description String?
+  date       DateTime @default(now())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+model Investment {
+  id         String   @id @default(cuid())
+  type       String   // STOCK, MUTUAL_FUND, CHIT_FUND, OTHER
+  symbol     String?
+  name       String
+  quantity   Float
+  buyPrice   Float
+  profit     Float   @default(0)
+  buyDate    DateTime
+  monthlySip Float?  // optional monthly SIP/contribution (₹)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+model Income {
+  id        String   @id @default(cuid())
+  amount    Float
+  category  String   // Salary, Bonus, Other
+  date      DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+}
