@@ -1,5 +1,5 @@
-# Stage 1: Dependencies
-FROM node:20-alpine AS deps
+# Alpine 3.16 has OpenSSL 1.1.x required by Prisma's query engine (libssl.so.1.1)
+FROM node:20-alpine3.16 AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json* ./
@@ -7,7 +7,7 @@ COPY package.json package-lock.json* ./
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Stage 2: Builder (Prisma generate + Next build)
-FROM node:20-alpine AS builder
+FROM node:20-alpine3.16 AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -17,9 +17,10 @@ RUN npx prisma generate
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-# Stage 3: Runner
-FROM node:20-alpine AS runner
+# Stage 3: Runner (same Alpine 3.16 for Prisma libssl.so.1.1)
+FROM node:20-alpine3.16 AS runner
 WORKDIR /app
+RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 # Listen on all interfaces (required for Render/cloud)
