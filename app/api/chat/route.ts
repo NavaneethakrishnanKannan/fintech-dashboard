@@ -135,7 +135,7 @@ async function callGroq(
 }
 
 export async function POST(req: NextRequest) {
-  const userId = await getUserId(req)
+  const userId = await getUserId()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const hasGemini = !!GEMINI_API_KEY

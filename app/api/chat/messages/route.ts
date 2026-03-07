@@ -7,7 +7,7 @@ const MAX_LIMIT = 100
 
 /** GET: fetch last N chat messages for the current user. */
 export async function GET(req: NextRequest) {
-  const userId = await getUserId(req)
+  const userId = await getUserId()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { searchParams } = new URL(req.url)
   const limit = Math.min(
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
 /** POST: append one or more messages (e.g. user + assistant pair). */
 export async function POST(req: NextRequest) {
-  const userId = await getUserId(req)
+  const userId = await getUserId()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body = await req.json()
   const items = Array.isArray(body.messages)

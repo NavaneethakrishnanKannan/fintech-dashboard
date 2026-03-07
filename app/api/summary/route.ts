@@ -18,7 +18,7 @@ function remainingPrincipalAfterPayments(
 }
 
 export async function GET(req: NextRequest) {
-  const userId = await getUserId(req)
+  const userId = await getUserId()
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

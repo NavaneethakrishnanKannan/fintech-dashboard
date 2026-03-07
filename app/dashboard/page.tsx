@@ -5,6 +5,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
+
+// Ensure session cookie is sent with same-origin API requests (fixes 401 on Vercel etc.)
+if (typeof window !== 'undefined') {
+  axios.defaults.withCredentials = true
+}
 import {
   PieChart,
   Pie,
