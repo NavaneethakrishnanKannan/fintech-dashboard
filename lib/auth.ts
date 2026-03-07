@@ -13,13 +13,18 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email.trim().toLowerCase() },
-        })
-        if (!user?.password) return null
-        const ok = await bcrypt.compare(credentials.password, user.password)
-        if (!ok) return null
-        return { id: user.id, email: user.email ?? '', name: user.name ?? null }
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email.trim().toLowerCase() },
+          })
+          if (!user?.password) return null
+          const ok = await bcrypt.compare(credentials.password, user.password)
+          if (!ok) return null
+          return { id: user.id, email: user.email ?? '', name: user.name ?? null }
+        } catch (err) {
+          console.error('[auth] authorize error:', err)
+          return null
+        }
       },
     }),
   ],
