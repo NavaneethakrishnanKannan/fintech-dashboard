@@ -165,7 +165,7 @@ export default function PortfolioPage() {
         buyDate: editForm.buyDate,
         sector: editForm.sector || null,
         category: editForm.category || null,
-        monthlySip: editForm.monthlySip != null && editForm.monthlySip !== '' ? Number(editForm.monthlySip) : null,
+        monthlySip: editForm.monthlySip != null ? Number(editForm.monthlySip) : null,
       })
       setToast('Updated.')
       cancelEdit()
