@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import type { ZerodhaConnection } from '@prisma/client'
 import { getUserId } from '@/lib/getSession'
 import { prisma } from '@/lib/prisma'
 import { fetchKiteHoldings, fetchKiteMfHoldings, fetchKiteMfSips, zerodhaSummaryFromHoldings, zerodhaSummaryFromMfHoldings } from '@/lib/zerodha'
@@ -175,7 +174,8 @@ export async function POST() {
   let incomes: Awaited<ReturnType<typeof prisma.income.findMany>>
   let loans: Awaited<ReturnType<typeof prisma.loan.findMany>>
   let goals: Awaited<ReturnType<typeof prisma.goal.findMany>>
-  let zerodhaConn: ZerodhaConnection | null
+  type ZerodhaConn = { userId: string; accessToken: string } | null
+  let zerodhaConn: ZerodhaConn
   try {
     ;[investments, expenses, incomes, loans, goals, zerodhaConn] = await Promise.all([
       prisma.investment.findMany({ where: { userId } }),
@@ -183,7 +183,7 @@ export async function POST() {
       prisma.income.findMany({ where: { userId } }),
       prisma.loan.findMany({ where: { userId } }),
       prisma.goal.findMany({ where: { userId } }),
-      prisma.zerodhaConnection.findUnique({ where: { userId } }),
+      (prisma as unknown as { zerodhaConnection: { findUnique: (arg: { where: { userId: string } }) => Promise<ZerodhaConn> } }).zerodhaConnection.findUnique({ where: { userId } }),
     ])
   } catch (e) {
     console.error('[ai/advice] Database error:', e instanceof Error ? e.message : e)
@@ -226,7 +226,8 @@ export async function POST() {
   const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses - totalEmi) / totalIncome) * 100 : 0
   const totalInvested = investments.reduce((s, inv) => s + inv.quantity * inv.buyPrice, 0)
   const totalCurrent = investments.reduce((s, inv) => {
-    const v = inv.currentPrice != null ? inv.quantity * inv.currentPrice : inv.buyPrice + inv.profit
+    const invWithPrice = inv as { currentPrice?: number | null; quantity: number; buyPrice: number; profit: number }
+    const v = invWithPrice.currentPrice != null ? inv.quantity * invWithPrice.currentPrice : inv.buyPrice + inv.profit
     return s + v
   }, 0)
   const emiToIncome = totalIncome > 0 ? (totalEmi / totalIncome) * 100 : 0
