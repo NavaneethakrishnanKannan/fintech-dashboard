@@ -20,6 +20,16 @@ type ZerodhaHoldings = {
 
 type PendingAction = { intent: string; fields: Record<string, unknown>; reply: string; userMessage: string }
 
+interface ISpeechRecognition {
+  continuous: boolean
+  interimResults: boolean
+  lang: string
+  onresult: ((e: { results?: { [i: number]: { [j: number]: { transcript?: string } } } }) => void) | null
+  onend: (() => void) | null
+  onerror: (() => void) | null
+  start(): void
+}
+
 export default function AIAdvisorPage() {
   const [advice, setAdvice] = useState<Advice | null>(null)
   const [adviceLoading, setAdviceLoading] = useState(false)
@@ -286,15 +296,15 @@ export default function AIAdvisorPage() {
 
   const startVoiceInput = () => {
     if (listening || !('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return
-    const Recognition = (window as unknown as { SpeechRecognition?: new () => SpeechRecognition; webkitSpeechRecognition?: new () => SpeechRecognition }).SpeechRecognition
-      ?? (window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognition }).webkitSpeechRecognition
+    const win = window as Window & { SpeechRecognition?: new () => ISpeechRecognition; webkitSpeechRecognition?: new () => ISpeechRecognition }
+    const Recognition = win.SpeechRecognition ?? win.webkitSpeechRecognition
     if (!Recognition) return
     const rec = new Recognition()
     rec.continuous = false
     rec.interimResults = false
     rec.lang = 'en-IN'
     setListening(true)
-    rec.onresult = (e: SpeechRecognitionEvent) => {
+    rec.onresult = (e: { results?: { [i: number]: { [j: number]: { transcript?: string } } } }) => {
       const text = e.results?.[0]?.[0]?.transcript
       if (text) {
         setChatInput((prev) => (prev ? `${prev} ${text}` : text))
