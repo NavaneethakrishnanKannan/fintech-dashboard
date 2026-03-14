@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import type { ZerodhaConnection } from '@prisma/client'
 import { getUserId } from '@/lib/getSession'
 import { prisma } from '@/lib/prisma'
 import { fetchKiteHoldings, fetchKiteMfHoldings, fetchKiteMfSips, zerodhaSummaryFromHoldings, zerodhaSummaryFromMfHoldings } from '@/lib/zerodha'
@@ -155,17 +156,39 @@ function parseStructuredResponse(text: string): { insights: string[]; suggestion
 }
 
 export async function POST() {
-  const userId = await getUserId()
+  let userId: string | null = null
+  try {
+    userId = await getUserId()
+  } catch (e) {
+    console.error('[ai/advice] getUserId failed:', e instanceof Error ? e.message : e)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const [investments, expenses, incomes, loans, goals, zerodhaConn] = await Promise.all([
-    prisma.investment.findMany({ where: { userId } }),
-    prisma.expense.findMany({ where: { userId } }),
-    prisma.income.findMany({ where: { userId } }),
-    prisma.loan.findMany({ where: { userId } }),
-    prisma.goal.findMany({ where: { userId } }),
-    prisma.zerodhaConnection.findUnique({ where: { userId } }),
-  ])
+  if (!GEMINI_API_KEY && !GROQ_API_KEY) {
+    console.warn('[ai/advice] No GEMINI_API_KEY or GROQ_API_KEY set in environment')
+    return NextResponse.json({ error: 'AI advice not configured', details: 'Set GEMINI_API_KEY or GROQ_API_KEY in deployment environment.' }, { status: 503 })
+  }
+
+  let investments: Awaited<ReturnType<typeof prisma.investment.findMany>>
+  let expenses: Awaited<ReturnType<typeof prisma.expense.findMany>>
+  let incomes: Awaited<ReturnType<typeof prisma.income.findMany>>
+  let loans: Awaited<ReturnType<typeof prisma.loan.findMany>>
+  let goals: Awaited<ReturnType<typeof prisma.goal.findMany>>
+  let zerodhaConn: ZerodhaConnection | null
+  try {
+    ;[investments, expenses, incomes, loans, goals, zerodhaConn] = await Promise.all([
+      prisma.investment.findMany({ where: { userId } }),
+      prisma.expense.findMany({ where: { userId } }),
+      prisma.income.findMany({ where: { userId } }),
+      prisma.loan.findMany({ where: { userId } }),
+      prisma.goal.findMany({ where: { userId } }),
+      prisma.zerodhaConnection.findUnique({ where: { userId } }),
+    ])
+  } catch (e) {
+    console.error('[ai/advice] Database error:', e instanceof Error ? e.message : e)
+    return NextResponse.json({ error: 'AI advice failed', details: 'Database unavailable. Check DATABASE_URL and connection.' }, { status: 503 })
+  }
 
   let zerodhaLine = ''
   if (KITE_API_KEY && zerodhaConn) {
@@ -259,9 +282,6 @@ export async function POST() {
         console.warn('[ai/advice] Groq fallback failed:', e instanceof Error ? e.message : e)
       }
     }
-    if (!GEMINI_API_KEY && !GROQ_API_KEY) {
-      return NextResponse.json({ error: 'No AI provider configured' }, { status: 500 })
-    }
     clearTimeout(timeoutId)
     const structured = parseStructuredResponse(raw)
     const isEmpty = structured.insights.length === 0 && structured.suggestions.length === 0
@@ -287,7 +307,12 @@ export async function POST() {
     })
   } catch (err) {
     clearTimeout(timeoutId)
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    return NextResponse.json({ error: 'AI advice failed', details: message }, { status: 500 })
+    const message = err instanceof Error ? err.message : String(err)
+    const stack = err instanceof Error ? err.stack : undefined
+    console.error('[ai/advice] Error:', message, stack ?? '')
+    const safeDetail = message.includes('API_KEY') || message.includes('key')
+      ? 'AI provider not configured or quota exceeded. Set GEMINI_API_KEY or GROQ_API_KEY in Vercel env.'
+      : message
+    return NextResponse.json({ error: 'AI advice failed', details: safeDetail }, { status: 500 })
   }
 }
