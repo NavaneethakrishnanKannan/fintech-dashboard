@@ -18,10 +18,11 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const goal = await prisma.goal.create({
     data: {
-      title: body.title ?? 'Goal',
+      title: body.title ?? body.goalName ?? 'Goal',
       targetAmount: Number(body.targetAmount) ?? 0,
-      currentAmount: Number(body.currentAmount) ?? 0,
-      targetDate: body.targetDate ? new Date(body.targetDate) : null,
+      currentAmount: Number(body.currentAmount) ?? body.currentSavings ?? 0,
+      targetDate: body.targetDate ? new Date(body.targetDate) : (body.targetYear ? new Date(Number(body.targetYear), 11, 31) : null),
+      expectedReturnRate: body.expectedReturnRate != null ? Number(body.expectedReturnRate) : null,
       userId,
     },
   })

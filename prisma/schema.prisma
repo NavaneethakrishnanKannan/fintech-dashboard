@@ -22,6 +22,19 @@ model User {
   chatMessages ChatMessage[]
   goals        Goal[]
   passwordResetTokens PasswordResetToken[]
+  alerts     Alert[]
+  netWorthHistories NetWorthHistory[]
+  zerodhaConnection ZerodhaConnection?
+}
+
+model ZerodhaConnection {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken String   // Kite access token (expires ~6 AM next day)
+  kiteUserId  String?  // Zerodha user id (e.g. AB1234)
+  userName    String?  // Name from Kite profile
+  connectedAt DateTime @default(now())
 }
 
 model ChatMessage {
@@ -34,14 +47,15 @@ model ChatMessage {
 }
 
 model Goal {
-  id          String   @id @default(cuid())
-  title       String
-  targetAmount Float
-  currentAmount Float  @default(0)
-  targetDate   DateTime?
-  createdAt   DateTime @default(now())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String    @id @default(cuid())
+  title             String
+  targetAmount      Float
+  currentAmount     Float     @default(0)
+  targetDate        DateTime?
+  expectedReturnRate Float?   // annual expected return %
+  createdAt         DateTime  @default(now())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model PasswordResetToken {
@@ -78,17 +92,20 @@ model Expense {
 }
 
 model Investment {
-  id         String   @id @default(cuid())
-  type       String   // STOCK, MUTUAL_FUND, CHIT_FUND, OTHER
-  symbol     String?
-  name       String
-  quantity   Float
-  buyPrice   Float
-  profit     Float   @default(0)
-  buyDate    DateTime
-  monthlySip Float?  // optional monthly SIP/contribution (₹)
-  userId     String
-  user       User     @relation(fields: [userId], references: [id])
+  id           String   @id @default(cuid())
+  type         String   // stock, mutual_fund, crypto, etc.
+  symbol       String?
+  name         String
+  quantity     Float
+  buyPrice     Float
+  currentPrice Float?   // optional; if null, current value = buyPrice + profit
+  profit       Float    @default(0)
+  buyDate      DateTime
+  monthlySip   Float?   // optional monthly SIP/contribution (₹)
+  sector       String?  // optional sector
+  category     String?  // equity, debt, gold
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
 }
 
 model Income {
@@ -98,4 +115,28 @@ model Income {
   date      DateTime @default(now())
   userId    String
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model Alert {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // expense_budget, low_savings, high_loan_ratio, concentrated_portfolio, etc.
+  title     String
+  message   String
+  severity  String?  // info, warning, error
+  read      Boolean  @default(false)
+  metadata  Json?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NetWorthHistory {
+  id         String   @id @default(cuid())
+  userId     String
+  date       DateTime // snapshot date (e.g. end of day)
+  assets     Float
+  liabilities Float
+  netWorth   Float
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

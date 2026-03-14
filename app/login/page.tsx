@@ -10,6 +10,7 @@ function LoginForm() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') ?? '/dashboard'
@@ -107,7 +108,7 @@ function LoginForm() {
           )}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || googleLoading}
             style={{
               padding: 12,
               background: loading ? '#ccc' : '#0070f3',
@@ -120,6 +121,32 @@ function LoginForm() {
             }}
           >
             {loading ? 'Signing in…' : 'Sign in'}
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ flex: 1, height: 1, background: '#ddd' }} />
+            <span style={{ fontSize: 12, color: '#666' }}>or</span>
+            <div style={{ flex: 1, height: 1, background: '#ddd' }} />
+          </div>
+          <button
+            type="button"
+            disabled={loading || googleLoading}
+            onClick={() => {
+              setError('')
+              setGoogleLoading(true)
+              signIn('google', { callbackUrl, redirect: true })
+            }}
+            style={{
+              padding: 12,
+              background: googleLoading ? '#ccc' : '#fff',
+              color: '#333',
+              border: '1px solid #ddd',
+              borderRadius: 6,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: googleLoading ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {googleLoading ? 'Redirecting…' : 'Sign in with Google'}
           </button>
         </form>
         <p style={{ marginTop: 20, fontSize: 13, color: '#666', textAlign: 'center' }}>

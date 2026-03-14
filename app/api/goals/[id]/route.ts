@@ -15,11 +15,13 @@ export async function PATCH(
     targetAmount?: number
     currentAmount?: number
     targetDate?: Date | null
+    expectedReturnRate?: number | null
   } = {}
   if (body.title != null) data.title = body.title
   if (body.targetAmount != null) data.targetAmount = Number(body.targetAmount)
   if (body.currentAmount != null) data.currentAmount = Number(body.currentAmount)
   if (body.targetDate !== undefined) data.targetDate = body.targetDate ? new Date(body.targetDate) : null
+  if (body.expectedReturnRate !== undefined) data.expectedReturnRate = body.expectedReturnRate != null ? Number(body.expectedReturnRate) : null
   const result = await prisma.goal.updateMany({
     where: { id, userId },
     data,

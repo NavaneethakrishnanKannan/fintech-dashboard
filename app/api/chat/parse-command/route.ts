@@ -7,7 +7,7 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY
 const PARSE_SYSTEM = `You are a command parser for a finance app. The user can either ask a question (chat), ADD an entry, or REMOVE/DELETE an expense.
 
 Allowed ADD intents and their fields (use exactly these keys):
-- add_expense: category (one of: Food, Rent, EMI, Travel, Shopping, Other), amount (number). Optional: description.
+- add_expense: category (one of: Food, Transport, Rent, Utilities, Shopping, Health, Entertainment, Education, EMI, Other), amount (number). Optional: description.
 - add_income: category (one of: Salary, Bonus, Other), amount (number).
 - add_investment: name (string), buyPrice or investedAmount (number). Optional: type (STOCK|MUTUAL_FUND|CHIT_FUND|OTHER), symbol, profit, monthlySip.
 - add_loan: name (string), principal (number), emi (number). Optional: interest (number), tenure (months), totalTenureMonths.
@@ -26,7 +26,7 @@ SUBTRACT intent (reduces existing expense by amount in the database - the app wi
 - Do NOT return "chat" for these. Returning "chat" only shows text and does NOT update the database. Only subtract_expense triggers the real DB update.
 
 Amount rules: "2k" or "2000" or "2 thousand" = 2000. "5 lakh" or "5l" = 500000. "10k" = 10000. Always output numbers, not strings.
-Category: use exact allowed values. If user says "food" or "foot" (typo) use "Food"; "salary" use "Salary".
+Category: use exact allowed values. If user says "food" or "foot" (typo) use "Food"; "health" or "medical" use "Health"; "transport" or "travel" use "Transport"; "salary" use "Salary".
 
 Respond with ONLY a single JSON object, no markdown or extra text. Use this exact shape:
 - If the user wants to ADD something: {"intent":"add_expense"|"add_income"|"add_investment"|"add_loan"|"add_goal","fields":{...},"missing":["field1"] or [],"reply":"Short confirmation message e.g. I'll add Food expense ₹2,000. Confirm?"}
@@ -74,45 +74,69 @@ export async function POST(req: NextRequest) {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 15_000)
 
+  const callGroqParse = async (): Promise<string> => {
+    if (!hasGroq) throw new Error('Groq not configured')
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [
+          { role: 'system', content: PARSE_SYSTEM },
+          { role: 'user', content: `User message: ${message}` },
+        ],
+        max_tokens: 512,
+        temperature: 0.1,
+      }),
+      signal: controller.signal,
+    })
+    if (!res.ok) throw new Error(await res.text())
+    const json = await res.json()
+    return json.choices?.[0]?.message?.content ?? '{}'
+  }
+
   try {
     let rawAnswer: string
     if (hasGemini) {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 512, temperature: 0.1 },
-          }),
-          signal: controller.signal,
-        },
-      )
-      if (!res.ok) throw new Error(await res.text())
-      const json = await res.json()
-      rawAnswer = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}'
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: prompt }] }],
+              generationConfig: { maxOutputTokens: 512, temperature: 0.1 },
+            }),
+            signal: controller.signal,
+          },
+        )
+        const text = await res.text()
+        if (!res.ok) {
+          const is429 = res.status === 429 || text.includes('429') || text.includes('RESOURCE_EXHAUSTED') || text.includes('quota')
+          if (is429 && hasGroq) {
+            rawAnswer = await callGroqParse()
+          } else {
+            throw new Error(text)
+          }
+        } else {
+          const json = JSON.parse(text) as { candidates?: { content?: { parts?: { text?: string }[] } }[] }
+          rawAnswer = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}'
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        const is429 = msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota')
+        if (is429 && hasGroq) {
+          rawAnswer = await callGroqParse()
+        } else {
+          throw e
+        }
+      }
     } else {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${GROQ_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
-          messages: [
-            { role: 'system', content: PARSE_SYSTEM },
-            { role: 'user', content: `User message: ${message}` },
-          ],
-          max_tokens: 512,
-          temperature: 0.1,
-        }),
-        signal: controller.signal,
-      })
-      if (!res.ok) throw new Error(await res.text())
-      const json = await res.json()
-      rawAnswer = json.choices?.[0]?.message?.content ?? '{}'
+      rawAnswer = await callGroqParse()
     }
     clearTimeout(timeoutId)
     const parsed = extractJson(rawAnswer)

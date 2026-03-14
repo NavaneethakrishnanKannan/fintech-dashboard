@@ -15,18 +15,26 @@ export async function PATCH(
     type?: string
     symbol?: string | null
     name?: string
+    quantity?: number
     buyPrice?: number
+    currentPrice?: number | null
     profit?: number
     buyDate?: Date
     monthlySip?: number | null
+    sector?: string | null
+    category?: string | null
   } = {}
   if (body.type != null) data.type = body.type
   if (body.symbol !== undefined) data.symbol = body.symbol || null
   if (body.name != null) data.name = body.name
+  if (body.quantity != null) data.quantity = Number(body.quantity)
   if (body.buyPrice != null) data.buyPrice = body.buyPrice
+  if (body.currentPrice !== undefined) data.currentPrice = body.currentPrice != null ? Number(body.currentPrice) : null
   if (body.profit != null) data.profit = body.profit
   if (body.buyDate != null) data.buyDate = new Date(body.buyDate)
   if (body.monthlySip !== undefined) data.monthlySip = body.monthlySip != null ? body.monthlySip : null
+  if (body.sector !== undefined) data.sector = body.sector || null
+  if (body.category !== undefined) data.category = body.category || null
 
   const result = await prisma.investment.updateMany({
     where: { id, userId },

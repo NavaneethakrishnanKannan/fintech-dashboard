@@ -18,14 +18,17 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const investment = await prisma.investment.create({
     data: {
-      type: body.type,
+      type: body.type ?? 'OTHER',
       symbol: body.symbol,
       name: body.name,
-      quantity: 1,
-      buyPrice: body.buyPrice,
+      quantity: body.quantity != null ? Number(body.quantity) : 1,
+      buyPrice: body.buyPrice ?? body.purchasePrice ?? 0,
+      currentPrice: body.currentPrice != null ? Number(body.currentPrice) : null,
       profit: body.profit ?? 0,
-      buyDate: new Date(body.buyDate),
+      buyDate: new Date(body.buyDate ?? body.purchaseDate ?? Date.now()),
       monthlySip: body.monthlySip != null ? body.monthlySip : null,
+      sector: body.sector ?? null,
+      category: body.category ?? null,
       userId,
     },
   })
