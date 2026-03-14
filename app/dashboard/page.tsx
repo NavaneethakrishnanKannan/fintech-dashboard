@@ -111,7 +111,7 @@ export default function DashboardOverview() {
     )
   }
 
-  const k = summary?.KPIs ?? {}
+  const k: Summary['KPIs'] = summary?.KPIs ?? {} as Summary['KPIs']
   const netWorth = Number(k.netWorth) || 0
   const totalCurrent = Number(k.totalCurrent) || 0
   const totalInvested = Number(k.totalInvested) || 0
