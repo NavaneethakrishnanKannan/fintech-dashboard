@@ -14,6 +14,7 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') ?? '/dashboard'
+  const redirectTo = callbackUrl.startsWith('/') ? callbackUrl : '/dashboard'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,6 +25,7 @@ function LoginForm() {
         email: email.trim().toLowerCase(),
         password,
         redirect: false,
+        callbackUrl: redirectTo,
       })
       if (res?.error) {
         setError('Invalid email or password.')
@@ -32,7 +34,7 @@ function LoginForm() {
       }
       // Full page redirect so the session cookie is sent on the next request (avoids
       // middleware not seeing the cookie when using router.push on Vercel/production).
-      window.location.href = callbackUrl
+      window.location.href = redirectTo
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
@@ -134,7 +136,7 @@ function LoginForm() {
             onClick={() => {
               setError('')
               setGoogleLoading(true)
-              signIn('google', { callbackUrl, redirect: true })
+              signIn('google', { callbackUrl: redirectTo, redirect: true })
             }}
             style={{
               padding: 12,
