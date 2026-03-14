@@ -30,8 +30,9 @@ function LoginForm() {
         setLoading(false)
         return
       }
-      router.push(callbackUrl)
-      router.refresh()
+      // Full page redirect so the session cookie is sent on the next request (avoids
+      // middleware not seeing the cookie when using router.push on Vercel/production).
+      window.location.href = callbackUrl
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
