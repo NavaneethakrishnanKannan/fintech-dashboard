@@ -96,7 +96,7 @@ export async function getTaxCapitalGains(userId: string): Promise<TaxCapitalGain
     const key = normalizeFundName(fund)
     if (!key) return undefined
     if (sipByFund.has(key)) return sipByFund.get(key)
-    for (const [sipKey, sip] of sipByFund) {
+    for (const [sipKey, sip] of Array.from(sipByFund.entries())) {
       if (key.includes(sipKey) || sipKey.includes(key)) return sip
     }
     return undefined
