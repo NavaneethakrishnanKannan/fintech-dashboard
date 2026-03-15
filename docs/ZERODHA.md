@@ -22,6 +22,24 @@ Users can link their Zerodha account to pull equity holdings into the app. The p
    ```
    - Do not commit the secret. Use the same key/secret for all users (your app’s credentials).
 
+## Who can connect (“user is not enabled for the app”)
+
+By default, a Kite Connect app can only be used by the **same Zerodha account (client ID)** that created the app at [developers.kite.trade](https://developers.kite.trade). There is **no way to “add” another user** for a single app:
+
+- **No “add user” in the console** — The developer dashboard does not let you whitelist or add another Zerodha client ID to an existing app. One app = one client ID (the creator’s).
+- **No personal token you can share** — Access tokens are tied to one Zerodha account. You cannot create a token for User A and have User B use it; tokens are not transferable across accounts.
+- **No “request access” or “invite user”** — Standard Kite Connect has no built-in flow for inviting other users.
+
+**Your options:**
+
+| Goal | What to do |
+|------|------------|
+| Only you (or the account that created the app) uses it | Use that Zerodha account only; enable API in Kite **Profile → API**; ensure app is ACTIVE and client ID matches in [developer console](https://developers.kite.trade/apps). |
+| Let a few or many other people use your app | Contact **kiteconnect@zerodha.com** (Zerodha compliance). Ask for **multi-user / production** access for your app. Get their go-ahead before building for many users; they will explain the process. You still need a Kite Connect subscription for your app (e.g. ₹500/month for the Connect plan if you use market data); any extra fee for multi-user is not published — confirm with Zerodha when you apply. |
+| Each of several people has their own Zerodha + their own app | Each person creates their own Kite Connect app from their Zerodha account (and pays the subscription). Your app would need to support multiple API keys (one per user), which is uncommon and not how this app is designed. |
+
+**If you are the app owner and still see “user is not enabled”:** Log out of any other Zerodha session; use only the account that created the app. In [Kite](https://kite.zerodha.com) go to **Profile → API** and ensure API access is enabled. In the developer console, confirm the app is ACTIVE and the client ID matches (no extra spaces).
+
 ## User flow
 
 1. User opens **Dashboard → Integrations**.

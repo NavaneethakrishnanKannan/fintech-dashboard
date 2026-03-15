@@ -50,22 +50,32 @@ export async function GET(req: NextRequest) {
     })
 
     const text = await tokenRes.text()
-    if (!tokenRes.ok) {
-      console.error('[zerodha/callback] token exchange failed', tokenRes.status, text)
-      return redirect('/dashboard/integrations?zerodha=error&reason=exchange_failed', req)
-    }
-
-    let json: { status?: string; data?: { access_token: string; user_id?: string; user_name?: string } }
+    let json: { status?: string; message?: string; error_type?: string; data?: { access_token: string; user_id?: string; user_name?: string } } | null = null
     try {
       json = JSON.parse(text) as typeof json
     } catch {
+      /* not JSON */
+    }
+
+    const isUserNotEnabled =
+      (json?.message?.toLowerCase().includes('not enabled') || json?.message?.toLowerCase().includes('enabled for the app')) ||
+      json?.error_type === 'InputException'
+
+    if (!tokenRes.ok) {
+      console.error('[zerodha/callback] token exchange failed', tokenRes.status, text)
+      const reason = isUserNotEnabled ? 'user_not_enabled' : 'exchange_failed'
+      return redirect(`/dashboard/integrations?zerodha=error&reason=${reason}`, req)
+    }
+
+    if (!json) {
       console.error('[zerodha/callback] invalid JSON', text)
       return redirect('/dashboard/integrations?zerodha=error&reason=invalid_response', req)
     }
 
     const data = json.data
     if (!data?.access_token) {
-      return redirect('/dashboard/integrations?zerodha=error&reason=no_access_token', req)
+      const reason = isUserNotEnabled ? 'user_not_enabled' : 'no_access_token'
+      return redirect(`/dashboard/integrations?zerodha=error&reason=${reason}`, req)
     }
 
     await prisma.zerodhaConnection.upsert({

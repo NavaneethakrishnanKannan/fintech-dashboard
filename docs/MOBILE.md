@@ -36,4 +36,10 @@ Workflows run on push to `main` (when `mobile-app/` or the workflow file changes
 
 - **Workflow**: [.github/workflows/build-ios.yml](../.github/workflows/build-ios.yml)
 - **Result**: An **App.app** for the iOS Simulator is uploaded as **wealth-saas-ios-simulator**. Use it in Xcode’s simulator on a Mac or in other macOS tooling.
-- **Note**: This builds for the simulator only (no code signing). To produce an **IPA** for TestFlight/App Store you need Apple signing (certificate + provisioning profile) and an extra job that runs `xcodebuild archive` and `-exportArchive`; you can add that using repository secrets (e.g. `APPLE_DEVELOPER_TEAM_ID`, signing cert, profile).
+- **Note**: This builds for the simulator only (no code signing).
+
+### iOS (TestFlight)
+
+- **Workflow**: [.github/workflows/build-ios-testflight.yml](../.github/workflows/build-ios-testflight.yml) (manual run only).
+- **Result**: A signed **IPA** is built and uploaded to **TestFlight**; testers install via the TestFlight app.
+- **Setup**: See **[docs/TESTFLIGHT.md](TESTFLIGHT.md)** for Apple Developer setup and required GitHub secrets.

@@ -39,6 +39,7 @@ export default function IntegrationsPage() {
       const reasons: Record<string, string> = {
         no_token: 'No request token from Zerodha. Make sure the redirect URL in Kite developer console is exactly: ' + (typeof window !== 'undefined' ? window.location.origin : '') + '/api/zerodha/callback',
         exchange_failed: 'Token exchange with Zerodha failed. Check that KITE_API_KEY and KITE_API_SECRET in .env are correct and the request token was not used or expired.',
+        user_not_enabled: 'Your Zerodha account is not enabled for this app. In Kite (kite.zerodha.com), go to Profile → API and enable this app for your account, then try Connect Zerodha again.',
         invalid_response: 'Invalid response from Zerodha.',
         no_access_token: 'Zerodha did not return an access token.',
         exception: 'Something went wrong. Check server logs.',

@@ -5,8 +5,8 @@ const config: CapacitorConfig = {
   appName: 'Wealth SaaS',
   webDir: 'www',
   server: {
-    // Set to your deployed app URL (e.g. https://your-app.vercel.app)
-    url: process.env.CAPACITOR_SERVER_URL || 'https://your-wealth-saas-url.com',
+    // Override with CAPACITOR_SERVER_URL if building for a different deployment
+    url: process.env.CAPACITOR_SERVER_URL || 'https://fintech-dashboard-phi-two.vercel.app',
     cleartext: true,
   },
   android: {
