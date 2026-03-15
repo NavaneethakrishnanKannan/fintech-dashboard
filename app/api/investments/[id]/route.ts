@@ -23,6 +23,7 @@ export async function PATCH(
     monthlySip?: number | null
     sector?: string | null
     category?: string | null
+    goalId?: string | null
   } = {}
   if (body.type != null) data.type = body.type
   if (body.symbol !== undefined) data.symbol = body.symbol || null
@@ -35,6 +36,7 @@ export async function PATCH(
   if (body.monthlySip !== undefined) data.monthlySip = body.monthlySip != null ? body.monthlySip : null
   if (body.sector !== undefined) data.sector = body.sector || null
   if (body.category !== undefined) data.category = body.category || null
+  if (body.goalId !== undefined) data.goalId = body.goalId != null && body.goalId !== '' ? body.goalId : null
 
   const result = await prisma.investment.updateMany({
     where: { id, userId },

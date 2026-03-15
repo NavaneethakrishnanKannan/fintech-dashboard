@@ -1,0 +1,11 @@
+{
+  "outputDir": "d:/Dashboard/wealth-saas/wealth-saas/playwright-mcp/recordings",
+  "saveVideo": {
+    "width": 1280,
+    "height": 720
+  },
+  "timeouts": {
+    "action": 10000,
+    "navigation": 60000
+  }
+}

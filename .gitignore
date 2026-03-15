@@ -34,3 +34,6 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Playwright MCP session recordings (AI-driven browser sessions)
+playwright-mcp/recordings/

@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import useSWR from 'swr'
 import axios from 'axios'
+import Link from 'next/link'
 import { DashboardCard } from '@/components/DashboardCard'
 import { LineChartCard } from '@/components/Charts/LineChartCard'
 
@@ -22,6 +24,17 @@ type Projection = {
   projectedValueAtTarget: number
   monthsLeft: number
   timeline: { month: number; value: number; target: number }[]
+}
+
+type GoalInvestment = {
+  id: string
+  name: string
+  type: string
+  quantity: number
+  buyPrice: number
+  currentPrice: number | null
+  profit: number
+  buyDate: string
 }
 
 export default function GoalsPage() {
@@ -55,6 +68,10 @@ export default function GoalsPage() {
       setProjection(null)
     }
   }
+
+  const { data: goalInvestments = [] } = useSWR<GoalInvestment[]>(
+    selectedGoalId ? `/api/goals/${selectedGoalId}/investments` : null
+  )
 
   useEffect(() => { loadGoals() }, [])
   useEffect(() => { if (selectedGoalId) loadProjection() }, [selectedGoalId])
@@ -122,11 +139,32 @@ export default function GoalsPage() {
         {goals.length === 0 && <p className="text-gray-500 py-4">No goals. Create one from the API or dashboard.</p>}
       </DashboardCard>
 
+      {selectedGoalId && (
+        <DashboardCard title="Funded by (Portfolio link)">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Investments allocated to this goal. Link investments in Portfolio → Add/Edit → Goal.</p>
+          {goalInvestments.length === 0 ? (
+            <p className="text-gray-500 dark:text-gray-400 text-sm">No investments linked yet.</p>
+          ) : (
+            <ul className="text-sm space-y-1">
+              {goalInvestments.map((inv) => {
+                const value = inv.currentPrice != null ? inv.quantity * inv.currentPrice : inv.quantity * inv.buyPrice + inv.profit
+                return (
+                  <li key={inv.id} className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                    <Link href="/dashboard/portfolio" className="text-blue-600 dark:text-blue-400 hover:underline">{inv.name}</Link>
+                    <span>₹{value.toLocaleString('en-IN')}</span>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </DashboardCard>
+      )}
+
       {selectedGoalId && projection && (
-        <DashboardCard title="Goal projection">
+        <DashboardCard title="Goal projection &amp; suggested SIP">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div><p className="text-sm text-gray-500">Progress</p><p className="font-semibold">{projection.progressPercent.toFixed(1)}%</p></div>
-            <div><p className="text-sm text-gray-500">Required monthly</p><p className="font-semibold">₹{projection.requiredMonthlyInvestment.toLocaleString('en-IN')}</p></div>
+            <div><p className="text-sm text-gray-500">Suggested monthly SIP</p><p className="font-semibold">₹{projection.requiredMonthlyInvestment.toLocaleString('en-IN')}</p></div>
             <div><p className="text-sm text-gray-500">Months left</p><p className="font-semibold">{projection.monthsLeft}</p></div>
             <div><p className="text-sm text-gray-500">Projected at target</p><p className="font-semibold">₹{projection.projectedValueAtTarget.toLocaleString('en-IN')}</p></div>
           </div>

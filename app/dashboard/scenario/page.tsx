@@ -8,8 +8,18 @@ import { SliderInput } from '@/components/SliderInput'
 
 if (typeof window !== 'undefined') axios.defaults.withCredentials = true
 
+type SimulationResult = {
+  average?: number
+  best?: number
+  worst?: number
+  p10?: number
+  p50?: number
+  p90?: number
+  timeline?: { year: number; value: number }[]
+}
+
 export default function ScenarioPage() {
-  const [timeline, setTimeline] = useState<{ year: number; value: number }[]>([])
+  const [result, setResult] = useState<SimulationResult>({})
   const [salary, setSalary] = useState(100000)
   const [emi, setEmi] = useState(20000)
   const [sip, setSip] = useState(10000)
@@ -21,7 +31,7 @@ export default function ScenarioPage() {
   const run = async () => {
     try {
       setLoading(true)
-      const res = await axios.post('/api/simulation', {
+      const res = await axios.post<SimulationResult>('/api/simulation', {
         salary,
         emi,
         sip,
@@ -29,13 +39,15 @@ export default function ScenarioPage() {
         years,
         marketReturn,
       })
-      setTimeline(res.data.timeline ?? [])
+      setResult(res.data ?? {})
     } catch {
-      setTimeline([])
+      setResult({})
     } finally {
       setLoading(false)
     }
   }
+
+  const timeline = result.timeline ?? []
 
   useEffect(() => { run() }, [salary, emi, sip, expenses, years, marketReturn])
 
@@ -67,7 +79,21 @@ export default function ScenarioPage() {
         </div>
       </DashboardCard>
 
-      <DashboardCard title="Projected net worth">
+      <DashboardCard title="Monte Carlo results (500 runs)">
+        {loading && <p className="text-gray-500">Calculating…</p>}
+        {!loading && (result.average != null || result.p50 != null) && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-4 text-sm">
+            {result.p10 != null && <div><p className="text-gray-500 dark:text-gray-400">10th %ile</p><p className="font-semibold">₹{(result.p10 / 1e5).toFixed(1)}L</p></div>}
+            {result.p50 != null && <div><p className="text-gray-500 dark:text-gray-400">Median (50th %ile)</p><p className="font-semibold">₹{(result.p50 / 1e5).toFixed(1)}L</p></div>}
+            {result.p90 != null && <div><p className="text-gray-500 dark:text-gray-400">90th %ile</p><p className="font-semibold">₹{(result.p90 / 1e5).toFixed(1)}L</p></div>}
+            {result.average != null && <div><p className="text-gray-500 dark:text-gray-400">Average</p><p className="font-semibold">₹{(result.average / 1e5).toFixed(1)}L</p></div>}
+            {result.worst != null && <div><p className="text-gray-500 dark:text-gray-400">Worst</p><p className="font-semibold">₹{(result.worst / 1e5).toFixed(1)}L</p></div>}
+            {result.best != null && <div><p className="text-gray-500 dark:text-gray-400">Best</p><p className="font-semibold">₹{(result.best / 1e5).toFixed(1)}L</p></div>}
+          </div>
+        )}
+      </DashboardCard>
+
+      <DashboardCard title="Projected net worth (deterministic)">
         {loading && <p className="text-gray-500">Calculating…</p>}
         {timeline.length > 0 && !loading && (
           <LineChartCard title="Net worth over years" data={timeline} xKey="year" lines={[{ dataKey: 'value', name: 'Net worth' }]} />

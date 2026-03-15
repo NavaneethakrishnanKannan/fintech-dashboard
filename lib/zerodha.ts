@@ -43,7 +43,10 @@ export async function fetchKiteHoldings(apiKey: string, accessToken: string): Pr
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(res.status === 401 ? 'Token expired or invalid' : `Kite API ${res.status}: ${text}`)
+    if (res.status === 401 || res.status === 403 || /TokenException|access_token|api_key|Incorrect/.test(text)) {
+      throw new Error('Session expired')
+    }
+    throw new Error(`Kite API error (${res.status})`)
   }
   return res.json() as Promise<KiteHoldingsResponse>
 }
@@ -81,7 +84,10 @@ export async function fetchKiteMfHoldings(apiKey: string, accessToken: string): 
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(res.status === 401 ? 'Token expired or invalid' : `Kite MF API ${res.status}: ${text}`)
+    if (res.status === 401 || res.status === 403 || /TokenException|access_token|api_key|Incorrect/.test(text)) {
+      throw new Error('Session expired')
+    }
+    throw new Error(`Kite MF API error (${res.status})`)
   }
   return res.json() as Promise<KiteMfHoldingsResponse>
 }
@@ -110,7 +116,10 @@ export async function fetchKiteMfSips(apiKey: string, accessToken: string): Prom
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(res.status === 401 ? 'Token expired or invalid' : `Kite MF SIP API ${res.status}: ${text}`)
+    if (res.status === 401 || res.status === 403 || /TokenException|access_token|api_key|Incorrect/.test(text)) {
+      throw new Error('Session expired')
+    }
+    throw new Error(`Kite MF SIP API error (${res.status})`)
   }
   return res.json() as Promise<KiteMfSipsResponse>
 }

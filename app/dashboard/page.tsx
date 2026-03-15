@@ -138,7 +138,7 @@ export default function DashboardOverview() {
         <StatCard label="Portfolio (current)" value={fmt(totalCurrent)} sub={`Invested: ${fmt(totalInvested)}`} />
         <StatCard label="Monthly savings" value={fmt(monthlySavings)} sub="Income − expenses − EMI" />
         <StatCard label="After expenses & investments" value={fmt(surplusAfterInvestments)} sub={totalMonthlySip > 0 ? `Monthly savings − SIP (₹${totalMonthlySip.toLocaleString('en-IN')})` : undefined} />
-        <StatCard label="Outstanding loans" value={fmt(totalLoanPrincipal)} />
+        <StatCard label="Outstanding loans" value={fmt(totalLoanPrincipal)} sub="View details on the Loans page." />
         {zerodhaValue != null && (
           <StatCard label="Zerodha portfolio" value={fmt(zerodhaValue)} sub="Linked account" />
         )}

@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import useSWR from 'swr'
 import axios from 'axios'
 import { DashboardCard } from '@/components/DashboardCard'
 import { PieChartCard } from '@/components/Charts/PieChartCard'
@@ -8,6 +10,8 @@ import { LineChartCard } from '@/components/Charts/LineChartCard'
 import { SliderInput } from '@/components/SliderInput'
 
 if (typeof window !== 'undefined') axios.defaults.withCredentials = true
+
+const PORTFOLIO_KEY = '/api/portfolio/combined'
 
 type PortfolioSummary = {
   totalInvested: number
@@ -32,6 +36,8 @@ type Investment = {
   sector: string | null
   category: string | null
   monthlySip: number | null
+  goalId?: string | null
+  goal?: { id: string; title: string } | null
 }
 
 type HoldingRow = {
@@ -45,7 +51,11 @@ type HoldingRow = {
   pnl: number
   monthlySip?: number | null
   buyDate?: string
+  goalId?: string | null
+  goalTitle?: string | null
 }
+
+type Goal = { id: string; title: string }
 
 type CombinedResponse = {
   zerodhaConnected: boolean
@@ -56,13 +66,13 @@ type CombinedResponse = {
 }
 
 export default function PortfolioPage() {
-  const [combined, setCombined] = useState<CombinedResponse | null>(null)
+  const { data: combined, error: combinedError, mutate } = useSWR<CombinedResponse>(PORTFOLIO_KEY)
+  const { data: goals = [] } = useSWR<Goal[]>('/api/goals')
   const [projection, setProjection] = useState<{ year: number; value: number }[]>([])
   const [sip, setSip] = useState(5000)
   const [returnPct, setReturnPct] = useState(12)
   const [years, setYears] = useState(15)
-  const [loading, setLoading] = useState(true)
-  const [addForm, setAddForm] = useState({ name: '', type: 'STOCK', quantity: '1', buyPrice: '', currentPrice: '', buyDate: new Date().toISOString().slice(0, 10), sector: '', category: '', monthlySip: '' })
+  const [addForm, setAddForm] = useState({ name: '', type: 'STOCK', quantity: '1', buyPrice: '', currentPrice: '', buyDate: new Date().toISOString().slice(0, 10), sector: '', category: '', monthlySip: '', goalId: '' })
   const [addLoading, setAddLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -72,19 +82,14 @@ export default function PortfolioPage() {
   const summary = combined?.summary ?? null
   const holdings = combined?.holdings ?? []
   const investments = combined?.manualInvestments ?? []
+  const loading = !combined && !combinedError
 
-  const loadSummary = async () => {
-    try {
-      const res = await axios.get<CombinedResponse>('/api/portfolio/combined')
-      setCombined(res.data)
-      const totalSip = (res.data.manualInvestments as Investment[]).reduce((sum, i) => sum + (i.monthlySip ?? 0), 0)
+  useEffect(() => {
+    if (combined?.manualInvestments?.length && sip === 5000) {
+      const totalSip = (combined.manualInvestments as Investment[]).reduce((sum, i) => sum + (i.monthlySip ?? 0), 0)
       if (totalSip > 0) setSip(totalSip)
-    } catch {
-      setCombined(null)
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [combined])
 
   const loadProjection = async () => {
     try {
@@ -100,7 +105,6 @@ export default function PortfolioPage() {
     }
   }
 
-  useEffect(() => { loadSummary() }, [])
   useEffect(() => { if (summary != null) loadProjection() }, [summary, sip, returnPct, years])
 
   const submitInvestment = async (e: React.FormEvent) => {
@@ -119,10 +123,11 @@ export default function PortfolioPage() {
         sector: addForm.sector.trim() || null,
         category: addForm.category.trim() || null,
         monthlySip: addForm.monthlySip ? Number(addForm.monthlySip) : null,
+        goalId: addForm.goalId || null,
       })
-      setAddForm({ name: '', type: 'STOCK', quantity: '1', buyPrice: '', currentPrice: '', buyDate: new Date().toISOString().slice(0, 10), sector: '', category: '', monthlySip: '' })
+      setAddForm({ name: '', type: 'STOCK', quantity: '1', buyPrice: '', currentPrice: '', buyDate: new Date().toISOString().slice(0, 10), sector: '', category: '', monthlySip: '', goalId: '' })
       setToast('Investment added.')
-      loadSummary()
+      mutate()
     } catch {
       setToast('Failed to add investment.')
     } finally {
@@ -143,6 +148,7 @@ export default function PortfolioPage() {
       sector: inv.sector ?? '',
       category: inv.category ?? '',
       monthlySip: inv.monthlySip,
+      goalId: inv.goalId ?? '',
     })
   }
 
@@ -166,10 +172,11 @@ export default function PortfolioPage() {
         sector: editForm.sector || null,
         category: editForm.category || null,
         monthlySip: editForm.monthlySip != null ? Number(editForm.monthlySip) : null,
+        goalId: editForm.goalId || null,
       })
       setToast('Updated.')
       cancelEdit()
-      loadSummary()
+      mutate()
     } catch {
       setToast('Update failed.')
     } finally {
@@ -184,9 +191,16 @@ export default function PortfolioPage() {
       <h1 className="text-2xl font-bold">Portfolio</h1>
 
       {combined?.zerodhaError && (
-        <p className="text-sm text-amber-600 dark:text-amber-400 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3">
-          Zerodha: {combined.zerodhaError}. Showing saved data for equity/MF.
-        </p>
+        <div className="text-sm rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3">
+          <p className="text-amber-800 dark:text-amber-200">
+            {combined.zerodhaError === 'Session expired'
+              ? 'Zerodha session has expired.'
+              : 'Zerodha connection issue.'}
+            {' '}
+            <Link href="/dashboard/integrations" className="font-medium underline hover:no-underline">Reconnect in Integrations</Link>
+            {' '}to refresh your equity and mutual fund data. Showing manually saved data until then.
+          </p>
+        </div>
       )}
       {summary && (
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -262,6 +276,12 @@ export default function PortfolioPage() {
             <option value="gold">Gold</option>
           </select>
           <input type="number" placeholder="Monthly SIP (₹, optional)" value={addForm.monthlySip} onChange={(e) => setAddForm((f) => ({ ...f, monthlySip: e.target.value }))} min="0" step="100" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" />
+          <select value={addForm.goalId} onChange={(e) => setAddForm((f) => ({ ...f, goalId: e.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" title="Funded by goal">
+            <option value="">No goal</option>
+            {goals.map((g) => (
+              <option key={g.id} value={g.id}>{g.title}</option>
+            ))}
+          </select>
           <button type="submit" disabled={addLoading} className="rounded bg-blue-600 text-white px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 sm:col-span-2">Add</button>
         </form>
         {toast && <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{toast}</p>}
@@ -278,6 +298,7 @@ export default function PortfolioPage() {
                 <th className="text-left py-2">Source</th>
                 <th className="text-left py-2">Name</th>
                 <th className="text-left py-2">Type</th>
+                <th className="text-left py-2">Goal</th>
                 <th className="text-right py-2">Qty</th>
                 <th className="text-right py-2">Invested</th>
                 <th className="text-right py-2">Current</th>
@@ -306,6 +327,14 @@ export default function PortfolioPage() {
                           <option value="OTHER">Other</option>
                         </select>
                       </td>
+                      <td className="py-2">
+                        <select value={editForm.goalId ?? ''} onChange={(e) => setEditForm((f) => ({ ...f!, goalId: e.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-sm">
+                          <option value="">No goal</option>
+                          {goals.map((g) => (
+                            <option key={g.id} value={g.id}>{g.title}</option>
+                          ))}
+                        </select>
+                      </td>
                       <td className="py-2"><input type="number" value={editForm.quantity ?? ''} onChange={(e) => setEditForm((f) => ({ ...f!, quantity: Number(e.target.value) }))} min="0.0001" step="any" className="w-20 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-sm text-right" /></td>
                       <td className="py-2"><input type="number" value={editForm.buyPrice ?? ''} onChange={(e) => setEditForm((f) => ({ ...f!, buyPrice: Number(e.target.value) }))} min="0" step="0.01" className="w-24 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-sm text-right" /></td>
                       <td className="py-2"><input type="number" value={editForm.currentPrice ?? ''} onChange={(e) => setEditForm((f) => ({ ...f!, currentPrice: e.target.value === '' ? null : Number(e.target.value) }))} min="0" step="0.01" className="w-24 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-sm text-right" placeholder="—" /></td>
@@ -324,6 +353,7 @@ export default function PortfolioPage() {
                     <td className="py-2">{row.source === 'zerodha' ? 'Zerodha' : 'Manual'}</td>
                     <td className="py-2">{row.name}</td>
                     <td className="py-2">{row.type}</td>
+                    <td className="py-2 text-sm text-gray-600 dark:text-gray-400" title="Funded by">{row.goalTitle ?? '—'}</td>
                     <td className="text-right py-2">{row.quantity}</td>
                     <td className="text-right py-2">₹{row.invested.toLocaleString('en-IN')}</td>
                     <td className="text-right py-2">₹{row.value.toLocaleString('en-IN')}</td>

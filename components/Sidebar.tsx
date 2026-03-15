@@ -6,14 +6,14 @@ import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { ThemeToggle } from './ThemeToggle'
 
-async function downloadExport(format: 'csv' | 'pdf') {
+async function downloadExport(format: 'csv' | 'pdf' | 'xlsx') {
   const res = await fetch(`/api/export?format=${format}`, { credentials: 'include' })
   if (!res.ok) return
   const blob = await res.blob()
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = format === 'csv' ? 'wealth-export.csv' : 'wealth-export.txt'
+  a.download = format === 'csv' ? 'wealth-export.csv' : format === 'pdf' ? 'wealth-export.pdf' : 'wealth-export.xlsx'
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -25,11 +25,13 @@ const nav = [
   { href: '/dashboard/loans', label: 'Loans' },
   { href: '/dashboard/goals', label: 'Goals' },
   { href: '/dashboard/health', label: 'Financial Health' },
+  { href: '/dashboard/tax', label: 'Tax (LTCG/STCG)' },
   { href: '/dashboard/planner', label: 'AI Planner' },
   { href: '/dashboard/scenario', label: 'Scenario Simulator' },
   { href: '/dashboard/fire', label: 'FIRE Calculator' },
   { href: '/dashboard/ai', label: 'AI Advisor' },
   { href: '/dashboard/integrations', label: 'Integrations' },
+  { href: '/dashboard/settings', label: 'Settings' },
 ]
 
 export function Sidebar() {
@@ -84,7 +86,10 @@ export function Sidebar() {
             Download CSV
           </button>
           <button type="button" onClick={() => downloadExport('pdf')} className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-            Download (text)
+            Download PDF
+          </button>
+          <button type="button" onClick={() => downloadExport('xlsx')} className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+            Download Excel
           </button>
           <button
             type="button"

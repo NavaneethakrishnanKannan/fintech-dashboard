@@ -22,9 +22,9 @@ export async function GET() {
 
   try {
     const [equityRes, mfRes, sipsRes] = await Promise.all([
-      fetchKiteHoldings(KITE_API_KEY, conn.accessToken).catch(() => ({ data: [] })),
-      fetchKiteMfHoldings(KITE_API_KEY, conn.accessToken).catch(() => ({ data: [] })),
-      fetchKiteMfSips(KITE_API_KEY, conn.accessToken).catch(() => ({ data: [] })),
+      fetchKiteHoldings(KITE_API_KEY, conn.accessToken),
+      fetchKiteMfHoldings(KITE_API_KEY, conn.accessToken),
+      fetchKiteMfSips(KITE_API_KEY, conn.accessToken),
     ])
 
     const equityHoldings = equityRes.data ?? []
@@ -79,7 +79,7 @@ export async function GET() {
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Failed to fetch holdings'
-    if (msg.includes('Token expired') || msg.includes('401')) {
+    if (msg === 'Session expired' || msg.includes('Token expired') || msg.includes('401')) {
       return NextResponse.json({ error: 'Session expired. Please reconnect Zerodha.', code: 'TOKEN_EXPIRED' }, { status: 401 })
     }
     return NextResponse.json({ error: msg }, { status: 502 })

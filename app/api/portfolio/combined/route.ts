@@ -20,7 +20,10 @@ export async function GET() {
   const userId = await getUserId()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const investments = await prisma.investment.findMany({ where: { userId } })
+  const investments = await prisma.investment.findMany({
+    where: { userId },
+    include: { goal: { select: { id: true, title: true } } },
+  })
   const zerodhaConn = await prisma.zerodhaConnection.findUnique({ where: { userId } })
 
   let zerodhaConnected = false
@@ -124,6 +127,8 @@ export async function GET() {
     pnl: number
     monthlySip?: number | null
     buyDate?: string
+    goalId?: string | null
+    goalTitle?: string | null
   }
 
   const holdings: HoldingRow[] = []
@@ -167,6 +172,8 @@ export async function GET() {
       pnl: val - invVal,
       monthlySip: inv.monthlySip,
       buyDate: inv.buyDate.toISOString().slice(0, 10),
+      goalId: inv.goalId ?? undefined,
+      goalTitle: inv.goal?.title ?? undefined,
     })
   })
 
@@ -184,6 +191,8 @@ export async function GET() {
       pnl: val - invVal,
       monthlySip: inv.monthlySip,
       buyDate: inv.buyDate.toISOString().slice(0, 10),
+      goalId: inv.goalId ?? undefined,
+      goalTitle: inv.goal?.title ?? undefined,
     })
   })
 

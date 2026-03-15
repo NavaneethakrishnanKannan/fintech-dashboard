@@ -19,9 +19,19 @@ export function simulateScenario(
     results.push(netWorth);
   }
 
+  results.sort((a, b) => a - b);
+  const n = results.length;
+  const pct = (p: number) => {
+    const idx = Math.min(n - 1, Math.floor((p / 100) * n));
+    return results[idx] ?? 0;
+  };
+
   return {
     average: results.reduce((a, b) => a + b, 0) / simulations,
-    best: Math.max(...results),
-    worst: Math.min(...results)
+    best: results[n - 1] ?? 0,
+    worst: results[0] ?? 0,
+    p10: pct(10),
+    p50: pct(50),
+    p90: pct(90),
   };
 }

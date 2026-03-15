@@ -22,6 +22,7 @@ export default function IntegrationsPage() {
   const searchParams = useSearchParams()
   const [status, setStatus] = useState<Status | null>(null)
   const [holdings, setHoldings] = useState<Holdings | null>(null)
+  const [tokenExpired, setTokenExpired] = useState(false)
   const [loading, setLoading] = useState(true)
   const [disconnectLoading, setDisconnectLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -29,7 +30,10 @@ export default function IntegrationsPage() {
   useEffect(() => {
     const connected = searchParams.get('zerodha')
     const reason = searchParams.get('reason')
-    if (connected === 'connected') setMessage('Zerodha connected successfully.')
+    if (connected === 'connected') {
+      setMessage('Zerodha connected successfully.')
+      if (typeof window !== 'undefined') sessionStorage.removeItem('zerodha-expired-banner-dismissed')
+    }
     if (connected === 'signin') setMessage('Session was lost when returning from Zerodha. Please stay on the same browser tab when connecting, or sign in again and try Connect Zerodha once more.')
     if (connected === 'error') {
       const reasons: Record<string, string> = {
@@ -45,17 +49,18 @@ export default function IntegrationsPage() {
 
   useEffect(() => {
     let cancelled = false
+    setTokenExpired(false)
     axios
       .get<Status>('/api/zerodha/status')
       .then((r) => {
         if (!cancelled) setStatus(r.data)
         if (r.data.connected) {
-          return axios.get<Holdings & { holdings?: unknown[] }>('/api/zerodha/holdings')
+          return axios.get<Holdings & { holdings?: unknown[]; code?: string; error?: string }>('/api/zerodha/holdings')
         }
         return null
       })
       .then((r) => {
-        if (!cancelled && r?.data) {
+        if (!cancelled && r?.data && !('code' in r.data && r.data.code === 'TOKEN_EXPIRED')) {
           setHoldings({
             totalValue: r.data.totalValue,
             equityValue: r.data.equityValue,
@@ -67,11 +72,18 @@ export default function IntegrationsPage() {
           })
         }
       })
-      .catch((err: { response?: { status?: number; data?: { details?: string } } }) => {
+      .catch((err: { response?: { status?: number; data?: { details?: string; code?: string; error?: string } } }) => {
         if (!cancelled) {
-          setStatus(null)
-          const details = err.response?.data?.details
-          if (err.response?.status === 500 && details) setMessage(`Zerodha status error: ${details}. Run: npx prisma migrate deploy && npx prisma generate`)
+          const statusCode = err.response?.status
+          const data = err.response?.data
+          if (statusCode === 401) {
+            setTokenExpired(true)
+            setHoldings(null)
+          } else if (statusCode !== 401) {
+            setStatus(null)
+          }
+          const details = data?.details
+          if (statusCode === 500 && details) setMessage(`Zerodha status error: ${details}. Run: npx prisma migrate deploy && npx prisma generate`)
         }
       })
       .finally(() => {
@@ -115,8 +127,21 @@ export default function IntegrationsPage() {
         </p>
         {status?.connected ? (
           <div className="space-y-4">
+            {tokenExpired && (
+              <div className="rounded-lg border border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/20 p-4">
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Session expired</p>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">Your Zerodha access token has expired. Reconnect to refresh your holdings and portfolio data.</p>
+                <a href="/api/zerodha/connect" className="inline-flex items-center rounded-lg bg-orange-600 text-white px-4 py-2 text-sm font-medium hover:bg-orange-700 mt-3">
+                  Reconnect Zerodha
+                </a>
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-4">
-              <span className="text-sm text-green-600 dark:text-green-400 font-medium">Connected</span>
+              {tokenExpired ? (
+                <span className="text-sm text-amber-600 dark:text-amber-400 font-medium">Session expired</span>
+              ) : (
+                <span className="text-sm text-green-600 dark:text-green-400 font-medium">Connected</span>
+              )}
               {status.kiteUserId && <span className="text-sm text-gray-500">ID: {status.kiteUserId}</span>}
               {status.userName && <span className="text-sm text-gray-500">{status.userName}</span>}
               <button type="button" onClick={disconnectZerodha} disabled={disconnectLoading} className="text-sm text-red-600 dark:text-red-400 hover:underline disabled:opacity-50">
@@ -171,6 +196,9 @@ export default function IntegrationsPage() {
                   </div>
                 )}
               </div>
+            )}
+            {tokenExpired && !holdings && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Portfolio data is unavailable until you reconnect.</p>
             )}
             <p className="text-xs text-gray-500">Access token expires daily (~6 AM). Reconnect if holdings stop updating.</p>
           </div>

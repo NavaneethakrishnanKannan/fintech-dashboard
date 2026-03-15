@@ -27,8 +27,30 @@ export async function POST(req: NextRequest) {
     },
   })
   const resetUrl = `${process.env.NEXTAUTH_URL ?? req.nextUrl.origin}/reset-password?token=${token}`
-  if (process.env.EMAIL_SERVER) {
-    // TODO: send email with resetUrl using your email provider
+  const resendKey = process.env.RESEND_API_KEY
+  const fromEmail = process.env.EMAIL_FROM ?? 'onboarding@resend.dev'
+  if (resendKey) {
+    try {
+      const r = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${resendKey}`,
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [email],
+          subject: 'Reset your password – Wealth SaaS',
+          html: `<p>Use the link below to reset your password. It expires in 24 hours.</p><p><a href="${resetUrl}">Reset password</a></p><p>If you didn't request this, ignore this email.</p>`,
+        }),
+      })
+      if (!r.ok) {
+        const err = await r.text()
+        console.error('[forgot-password] Resend error:', err)
+      }
+    } catch (e) {
+      console.error('[forgot-password] Send failed:', e)
+    }
   }
   return NextResponse.json({ ok: true, resetUrl: process.env.NODE_ENV === 'development' ? resetUrl : undefined })
 }

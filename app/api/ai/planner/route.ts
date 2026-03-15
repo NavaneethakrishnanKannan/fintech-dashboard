@@ -15,7 +15,7 @@ Respond in two parts:
 
 PART 1 - Short narrative (plain text, under 200 words): Briefly state the suggested total expenses, how much they can save per month, and the main allocation priorities. Use clear line breaks. No markdown.
 
-PART 2 - A single JSON object on its own line at the very end of your response. No other text after it. Use this exact structure (numbers for amounts, not strings):
+PART 2 - A single JSON object on its own line at the very end of your response. No other text after it. Use this exact structure (numbers for amounts, not strings). In JSON use ONLY digits for numbers (no commas): e.g. 78810 not 78,810.
 {"suggestedExpensesTotal":number,"monthlySavings":number,"budgetBreakdown":[{"category":"string","amount":number,"note":"string"}],"allocations":[{"purpose":"string","amount":number,"note":"string"}],"summary":"string"}
 
 Rules for the JSON:
@@ -38,7 +38,7 @@ async function callGemini(prompt: string, signal: AbortSignal): Promise<string> 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 2048, temperature: 0, seed: 42 },
+            generationConfig: { maxOutputTokens: 4096, temperature: 0, seed: 42 },
           }),
           signal,
         },
@@ -50,8 +50,10 @@ async function callGemini(prompt: string, signal: AbortSignal): Promise<string> 
         throw new Error(text)
       }
       const json = await res.json()
-      const text = json.candidates?.[0]?.content?.parts?.[0]?.text
+      const candidate = json.candidates?.[0]
+      const text = candidate?.content?.parts?.[0]?.text
       if (typeof text === 'string' && text.trim()) return text.trim()
+      // Blocked, empty, or safety filter - try next model
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       if ((msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota')) && GROQ_API_KEY) throw e
@@ -67,7 +69,7 @@ async function callGroq(messages: { role: string; content: string }[], signal: A
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_API_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages, max_tokens: 2048, temperature: 0 }),
+    body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages, max_tokens: 4096, temperature: 0 }),
     signal,
   })
   if (!res.ok) throw new Error(await res.text())
@@ -100,7 +102,9 @@ function extractStructured(raw: string): { plan: string; structured: StructuredP
     jsonStr = trimmed.slice(jsonStart, end)
   }
   if (!jsonStr) return { plan: trimmed, structured: null }
-  let repaired = jsonStr
+  // Remove commas inside numbers so "78,810" becomes 78810 (valid JSON)
+  const noCommaNumbers = jsonStr.replace(/:(\s*)([\d,]+)(\s*[,}\]])/g, (_, s1, num, s2) => `:${s1}${num.replace(/,/g, '')}${s2}`)
+  let repaired = noCommaNumbers
     .replace(/\],\s*\{\s*"purpose"/g, '], "allocations": [{"purpose"')
     .replace(/\}\s*,\s*"\s*\{\s*"category"/g, '"},{"category"') // fix "}, "{"category" typo in budgetBreakdown
   try {
@@ -119,7 +123,7 @@ function extractStructured(raw: string): { plan: string; structured: StructuredP
     return { plan: plan || trimmed, structured }
   } catch {
     try {
-      const structured = JSON.parse(jsonStr) as StructuredPlan
+      const structured = JSON.parse(noCommaNumbers) as StructuredPlan
       if (typeof structured.suggestedExpensesTotal === 'number' && typeof structured.monthlySavings === 'number') {
         if (!Array.isArray(structured.budgetBreakdown)) structured.budgetBreakdown = []
         if (!Array.isArray(structured.allocations)) structured.allocations = []
@@ -257,7 +261,19 @@ export async function POST() {
     })
   } catch (err) {
     clearTimeout(timeoutId)
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    return NextResponse.json({ error: 'Planner failed', details: message }, { status: 500 })
+    const expensesByCategoryFallback = Object.entries(byCategory).map(([category, amount]) => ({ category, amount: Math.round(amount) }))
+    return NextResponse.json({
+      plan: 'The planner could not be generated right now. Please try again in a moment.',
+      structured: undefined,
+      current: {
+        totalExpenses: Math.round(totalExpenses),
+        totalEmi: Math.round(totalEmi),
+        monthlySavings: Math.round(monthlySavings),
+        income: Math.round(totalIncome),
+        totalMonthlySip: Math.round(totalMonthlySip),
+        expensesByCategory: expensesByCategoryFallback,
+      },
+      error: err instanceof Error ? err.message : 'Unknown error',
+    })
   }
 }

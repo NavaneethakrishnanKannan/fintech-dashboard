@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
   const userId = await getUserId()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body = await req.json()
+  const goalId = body.goalId != null && body.goalId !== '' ? body.goalId : null
   const investment = await prisma.investment.create({
     data: {
       type: body.type ?? 'OTHER',
@@ -29,6 +30,7 @@ export async function POST(req: NextRequest) {
       monthlySip: body.monthlySip != null ? body.monthlySip : null,
       sector: body.sector ?? null,
       category: body.category ?? null,
+      goalId,
       userId,
     },
   })

@@ -19,10 +19,12 @@ model User {
   expenses  Expense[]
   investments Investment[]
   incomes     Income[]
+  recurringTemplates RecurringTemplate[]
   chatMessages ChatMessage[]
   goals        Goal[]
   passwordResetTokens PasswordResetToken[]
   alerts     Alert[]
+  budgets   Budget[]
   netWorthHistories NetWorthHistory[]
   zerodhaConnection ZerodhaConnection?
 }
@@ -47,15 +49,16 @@ model ChatMessage {
 }
 
 model Goal {
-  id                String    @id @default(cuid())
+  id                String        @id @default(cuid())
   title             String
   targetAmount      Float
-  currentAmount     Float     @default(0)
+  currentAmount     Float         @default(0)
   targetDate        DateTime?
-  expectedReturnRate Float?   // annual expected return %
-  createdAt         DateTime  @default(now())
+  expectedReturnRate Float?       // annual expected return %
+  createdAt         DateTime      @default(now())
   userId            String
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investments       Investment[]
 }
 
 model PasswordResetToken {
@@ -104,6 +107,8 @@ model Investment {
   monthlySip   Float?   // optional monthly SIP/contribution (₹)
   sector       String?  // optional sector
   category     String?  // equity, debt, gold
+  goalId       String?  // optional link to goal (funded by)
+  goal         Goal?    @relation(fields: [goalId], references: [id], onDelete: SetNull)
   userId       String
   user         User     @relation(fields: [userId], references: [id])
 }
@@ -115,6 +120,29 @@ model Income {
   date      DateTime @default(now())
   userId    String
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model RecurringTemplate {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String   // expense | income
+  amount      Float
+  category    String
+  description String?  // for expense
+  frequency   String   // weekly | monthly | yearly
+  startDate   DateTime
+  nextRun     DateTime
+  createdAt   DateTime @default(now())
+}
+
+model Budget {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  String   // expense category (Food, Transport, etc.) or "total" for overall
+  amount    Float    // budget limit per month (₹)
+  createdAt DateTime @default(now())
 }
 
 model Alert {
