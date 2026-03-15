@@ -1,0 +1,68 @@
+name: Build iOS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mobile-app/**'
+      - '.github/workflows/build-ios.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: mobile-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: mobile-app
+        run: npm ci
+
+      - name: Add iOS platform if missing
+        working-directory: mobile-app
+        run: |
+          if [ ! -d "ios" ]; then
+            npx cap add ios
+          fi
+
+      - name: Sync Capacitor
+        working-directory: mobile-app
+        env:
+          CAPACITOR_SERVER_URL: ${{ vars.CAPACITOR_SERVER_URL || 'https://your-wealth-saas-url.com' }}
+        run: npx cap sync ios
+
+      - name: Build for iOS Simulator (no signing)
+        working-directory: mobile-app/ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace -scheme App \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Prepare iOS artifact
+        run: |
+          APP=$(find mobile-app/ios/App/build -name "App.app" -type d 2>/dev/null | head -1)
+          if [ -z "$APP" ]; then
+            APP=$(find mobile-app/ios/App -name "*.app" -type d 2>/dev/null | head -1)
+          fi
+          if [ -z "$APP" ]; then echo "::error::Could not find built .app"; exit 1; fi
+          mkdir -p ios-artifact
+          cp -R "$APP" ios-artifact/
+
+      - name: Upload iOS app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wealth-saas-ios-simulator
+          path: ios-artifact/

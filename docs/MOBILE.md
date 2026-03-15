@@ -21,3 +21,19 @@ The **Capacitor** app lives in `mobile-app/`. It does not bundle the Next.js app
 - **Steps in short**: set `server.url` in `mobile-app/capacitor.config.ts` to your deployed URL → `npm install` → `npx cap add android` (and optionally `ios`) → `npm run sync` → open in Android Studio / Xcode and build.
 
 Same codebase (your web app) powers both PWA and the native shell; the native app is just a thin wrapper.
+
+## Building in the cloud (GitHub Actions)
+
+Workflows run on push to `main` (when `mobile-app/` or the workflow file changes) or manually via **Actions** tab → **Run workflow**.
+
+### Android (APK)
+
+- **Workflow**: [.github/workflows/build-android.yml](../.github/workflows/build-android.yml)
+- **Result**: A debug APK is uploaded as an artifact **wealth-saas-android-debug**. Download from the run summary → **Artifacts**.
+- **Optional**: Set repository variable **CAPACITOR_SERVER_URL** (Settings → Secrets and variables → Actions → Variables) to your deployed app URL so the WebView loads the correct site.
+
+### iOS (Simulator build)
+
+- **Workflow**: [.github/workflows/build-ios.yml](../.github/workflows/build-ios.yml)
+- **Result**: An **App.app** for the iOS Simulator is uploaded as **wealth-saas-ios-simulator**. Use it in Xcode’s simulator on a Mac or in other macOS tooling.
+- **Note**: This builds for the simulator only (no code signing). To produce an **IPA** for TestFlight/App Store you need Apple signing (certificate + provisioning profile) and an extra job that runs `xcodebuild archive` and `-exportArchive`; you can add that using repository secrets (e.g. `APPLE_DEVELOPER_TEAM_ID`, signing cert, profile).
