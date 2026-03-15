@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
     const taxData = await getTaxCapitalGains(userId)
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
     const margin = 14
-    const tableOpts = { margin: { left: margin }, styles: { fontSize: 9 }, headStyles: { fillColor: [66, 139, 202], fontStyle: 'bold' } }
+    const tableOpts = { margin: { left: margin }, styles: { fontSize: 9 }, headStyles: { fillColor: [66, 139, 202] as [number, number, number], fontStyle: 'bold' as const } }
 
     const newPage = () => {
       doc.addPage()
@@ -189,7 +189,7 @@ export async function GET(req: NextRequest) {
       columnStyles: { 1: { cellWidth: 35 } },
     })
 
-    y = newPage('Goals')
+    y = newPage()
     doc.setFont('helvetica', 'bold')
     doc.text('Goals', margin, y)
     y += 6
