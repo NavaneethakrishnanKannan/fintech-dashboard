@@ -110,7 +110,7 @@ export async function GET(req: NextRequest) {
     const margin = 14
     const tableOpts = { margin: { left: margin }, styles: { fontSize: 9 }, headStyles: { fillColor: [66, 139, 202], fontStyle: 'bold' } }
 
-    function newPage() {
+    const newPage = () => {
       doc.addPage()
       return 18
     }
