@@ -39,7 +39,7 @@ jobs:
       - name: Sync Capacitor
         working-directory: mobile-app
         env:
-          CAPACITOR_SERVER_URL: ${{ vars.CAPACITOR_SERVER_URL || 'https://your-wealth-saas-url.com' }}
+          CAPACITOR_SERVER_URL: ${{ vars.CAPACITOR_SERVER_URL || 'https://fintech-dashboard-phi-two.vercel.app' }}
         run: npx cap sync ios
 
       - name: Build for iOS Simulator (no signing)
