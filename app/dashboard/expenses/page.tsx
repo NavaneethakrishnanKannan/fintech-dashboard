@@ -29,7 +29,7 @@ type Report = {
 
 type ExpenseRow = { id: string; amount: number; category: string; description: string | null; date: string }
 
-const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Rent', 'Utilities', 'Shopping', 'Health', 'Entertainment', 'Education', 'Other']
+const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Travel', 'Rent', 'Utilities', 'Shopping', 'Health', 'Entertainment', 'Education', 'Other']
 const BUDGET_CATEGORIES = ['total', ...EXPENSE_CATEGORIES]
 const INCOME_CATEGORIES = ['Salary', 'Bonus', 'Freelance', 'Investment', 'Other']
 

@@ -47,6 +47,18 @@ export default function ScenarioPage() {
     }
   }
 
+  const useMyData = () => {
+    axios.get<{ salary: number; emi: number; sip: number; expenses: number }>('/api/simulation').then((res) => {
+      const d = res.data
+      if (d) {
+        if (d.salary > 0) setSalary(d.salary)
+        if (d.emi > 0) setEmi(d.emi)
+        if (d.sip > 0) setSip(d.sip)
+        if (d.expenses > 0) setExpenses(d.expenses)
+      }
+    }).catch(() => {})
+  }
+
   const timeline = result.timeline ?? []
 
   useEffect(() => { run() }, [salary, emi, sip, expenses, years, marketReturn])
@@ -68,6 +80,16 @@ export default function ScenarioPage() {
       </p>
 
       <DashboardCard title="Adjust assumptions">
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <button
+            type="button"
+            onClick={useMyData}
+            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            Use my data
+          </button>
+          <span className="text-xs text-gray-500 dark:text-gray-400">Pre-fills salary (incomes), EMI (loans), SIP (investments), expenses (this month) from your dashboard.</span>
+        </div>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Change sliders to see projected net worth. Leave at 0 to use your actual data where available.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <SliderInput label="Monthly salary (₹)" value={salary} min={0} max={500000} step={5000} unit="₹" onChange={setSalary} />

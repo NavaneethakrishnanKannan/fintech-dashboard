@@ -6,17 +6,7 @@ import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { ThemeToggle } from './ThemeToggle'
 
-async function downloadExport(format: 'csv' | 'pdf' | 'xlsx') {
-  const res = await fetch(`/api/export?format=${format}`, { credentials: 'include' })
-  if (!res.ok) return
-  const blob = await res.blob()
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = format === 'csv' ? 'wealth-export.csv' : format === 'pdf' ? 'wealth-export.pdf' : 'wealth-export.xlsx'
-  a.click()
-  URL.revokeObjectURL(url)
-}
+type ExportFormat = 'csv' | 'pdf' | 'xlsx'
 
 const nav = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -37,6 +27,31 @@ const nav = [
 export function Sidebar() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const [downloadingFormat, setDownloadingFormat] = useState<ExportFormat | null>(null)
+
+  const handleDownload = async (format: ExportFormat) => {
+    setDownloadingFormat(format)
+    try {
+      const res = await fetch(`/api/export?format=${format}`, { credentials: 'include' })
+      if (!res.ok) return
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = format === 'csv' ? 'wealth-export.csv' : format === 'pdf' ? 'wealth-export.pdf' : 'wealth-export.xlsx'
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setDownloadingFormat(null)
+    }
+  }
+
+  const exportButtons: { format: ExportFormat; label: string }[] = [
+    { format: 'csv', label: 'Download CSV' },
+    { format: 'pdf', label: 'Download PDF' },
+    { format: 'xlsx', label: 'Download Excel' },
+  ]
+  const isExporting = downloadingFormat !== null
 
   return (
     <>
@@ -82,15 +97,24 @@ export function Sidebar() {
         </nav>
         <div className="p-2 border-t border-gray-200 dark:border-gray-700 space-y-1 shrink-0">
           <div className="px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">Export</div>
-          <button type="button" onClick={() => downloadExport('csv')} className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-            Download CSV
-          </button>
-          <button type="button" onClick={() => downloadExport('pdf')} className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-            Download PDF
-          </button>
-          <button type="button" onClick={() => downloadExport('xlsx')} className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-            Download Excel
-          </button>
+          {exportButtons.map(({ format, label }) => (
+            <button
+              key={format}
+              type="button"
+              onClick={() => handleDownload(format)}
+              disabled={isExporting}
+              className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-60 disabled:pointer-events-none flex items-center gap-2"
+            >
+              {downloadingFormat === format ? (
+                <>
+                  <span className="inline-block w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin shrink-0" aria-hidden />
+                  <span>Preparing…</span>
+                </>
+              ) : (
+                label
+              )}
+            </button>
+          ))}
           <button
             type="button"
             onClick={() => signOut({ callbackUrl: '/login' })}

@@ -19,10 +19,11 @@ PART 2 - A single JSON object on its own line at the very end of your response. 
 {"suggestedExpensesTotal":number,"monthlySavings":number,"budgetBreakdown":[{"category":"string","amount":number,"note":"string"}],"allocations":[{"purpose":"string","amount":number,"note":"string"}],"summary":"string"}
 
 Rules for the JSON:
-- suggestedExpensesTotal: total suggested monthly expenses (excluding EMI). Should be a target you recommend, not just their current total.
-- monthlySavings: how much they can save per month if they follow the budget (income minus suggestedExpensesTotal minus EMI).
-- budgetBreakdown: Use the SAME category names as in the user's "By category" data so the table can compare. Do NOT include EMI in budgetBreakdown (EMI is added separately). Recommend REDUCTIONS where spending is high or discretionary (e.g. Shopping, Other), but do NOT reduce any category to zero—keep realistic amounts (e.g. if they spend on Travel, suggest a lower Travel amount, not ₹0). Keep or slightly adjust essentials (Rent, Food, Health). Short note per category (e.g. "reduce by 20%", "cap 5% of income").
-- allocations: This is how the user should SPLIT their monthly savings across goals. Suggested monthly savings = income minus suggestedExpensesTotal minus EMI. The SUM of all allocation amounts MUST equal this number (or less). E.g. if they save ₹18,800/month, suggest allocations that add up to 18800 (e.g. Emergency 8000, Car 5000, Other 3800, Misc 2000). Each amount = rupees to set aside per month for that purpose. Do not suggest totals that exceed their monthly savings. Prioritise Emergency fund and their stated goals (e.g. car), then other/misc.
+- CRITICAL: Available for expenses = income minus EMI. The user can only spend this much on non-EMI categories. The SUM of all budgetBreakdown amounts MUST NOT exceed (income − EMI). If income − EMI is small, suggest category amounts that fit within this ceiling; do not suggest more than they have.
+- suggestedExpensesTotal: total suggested monthly expenses (excluding EMI). MUST be ≤ (income − EMI). Should be a target you recommend within what they can afford.
+- monthlySavings: how much they can save per month = income minus suggestedExpensesTotal minus EMI. Must be ≥ 0.
+- budgetBreakdown: You MUST include EVERY category that appears in the user's "By category" data—do not omit any (e.g. include Travel, Transport, Education, etc. if present). Use the exact same category names so the table can compare. Do NOT include EMI in budgetBreakdown (EMI is added separately). The SUM of budgetBreakdown MUST NOT exceed (income − EMI). FIXED: Do NOT suggest reducing Rent or Utilities—keep amount equal to user's current (note: "keep" or "fixed"). DISCRETIONARY: Suggest reducing Shopping, Entertainment, Transport, Travel where high. For Travel: suggest an amount (same or reduced) and a note (e.g. "reduce if possible" or "cap for trips"). OTHER: "Other" is a catch-all; suggest reducing and note "reduce if possible; often discretionary". For Food and Health, small adjustment only if needed to fit ceiling. Every category in the user's list must have one budgetBreakdown entry with amount and note.
+- allocations: Split monthly savings across goals. SUM of allocation amounts MUST equal monthlySavings (or less). Prioritise Emergency fund and stated goals.
 - summary: one sentence takeaway.`
 
 const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro']
@@ -184,11 +185,13 @@ export async function POST() {
     }
   }
 
+  const availableForExpenses = Math.max(0, totalIncome - totalEmi)
   const context = [
     `Income: ₹${Math.round(totalIncome).toLocaleString('en-IN')}`,
+    `Loan EMIs: ₹${Math.round(totalEmi).toLocaleString('en-IN')} (${loans.map((l) => `${l.name} ₹${l.emi}`).join('; ')})`,
+    `Available for monthly expenses (income − EMI only): ₹${Math.round(availableForExpenses).toLocaleString('en-IN')}. Your suggestedExpensesTotal and the SUM of budgetBreakdown must NOT exceed this.`,
     `Current expenses (total): ₹${Math.round(totalExpenses).toLocaleString('en-IN')}`,
     `By category: ${Object.entries(byCategory).map(([c, a]) => `${c} ₹${Math.round(a).toLocaleString('en-IN')}`).join(', ') || 'None'}`,
-    `Loan EMIs: ₹${Math.round(totalEmi).toLocaleString('en-IN')} (${loans.map((l) => `${l.name} ₹${l.emi}`).join('; ')})`,
     `Current monthly savings (income − expenses − EMI): ₹${Math.round(monthlySavings).toLocaleString('en-IN')}`,
     `Existing SIP (from investments): ₹${Math.round(totalMonthlySip).toLocaleString('en-IN')}/month`,
     zerodhaLine,
@@ -247,9 +250,59 @@ export async function POST() {
     }
 
     const { plan: planText, structured } = extractStructured(raw)
+    const FIXED_CATEGORIES = ['rent', 'utilities']
+    let clampedStructured = structured
+    if (structured && availableForExpenses >= 0) {
+      let breakdown = structured.budgetBreakdown.map((r) => ({ ...r }))
+      const byCategoryLower: Record<string, number> = {}
+      for (const [k, v] of Object.entries(byCategory)) {
+        byCategoryLower[k.trim().toLowerCase()] = v
+      }
+      for (const row of breakdown) {
+        const catLower = row.category.trim().toLowerCase()
+        if (FIXED_CATEGORIES.includes(catLower) && byCategoryLower[catLower] != null) {
+          row.amount = Math.round(Number(byCategoryLower[catLower]))
+          row.note = row.note ? row.note.replace(/reduce|cap.*/i, 'keep (fixed)') : 'keep (fixed)'
+        }
+      }
+      let breakdownSum = breakdown.reduce((s, r) => s + r.amount, 0)
+      if (breakdownSum > availableForExpenses && breakdownSum > 0) {
+        const fixedTotal = breakdown
+          .filter((r) => FIXED_CATEGORIES.includes(r.category.trim().toLowerCase()))
+          .reduce((s, r) => s + r.amount, 0)
+        const discretionaryTotal = breakdownSum - fixedTotal
+        const headroom = Math.max(0, availableForExpenses - fixedTotal)
+        if (discretionaryTotal > 0 && headroom >= 0) {
+          const scale = headroom / discretionaryTotal
+          breakdown = breakdown.map((r) => {
+            const isFixed = FIXED_CATEGORIES.includes(r.category.trim().toLowerCase())
+            return { ...r, amount: isFixed ? r.amount : Math.round(r.amount * scale) }
+          })
+        } else {
+          const scale = availableForExpenses / breakdownSum
+          breakdown = breakdown.map((r) => ({ ...r, amount: Math.round(r.amount * scale) }))
+        }
+        breakdownSum = breakdown.reduce((s, r) => s + r.amount, 0)
+        clampedStructured = {
+          ...structured,
+          budgetBreakdown: breakdown,
+          suggestedExpensesTotal: Math.round(breakdownSum),
+          monthlySavings: Math.max(0, Math.round(totalIncome - breakdownSum - totalEmi)),
+        }
+      } else if (structured.suggestedExpensesTotal > availableForExpenses) {
+        clampedStructured = {
+          ...structured,
+          budgetBreakdown: breakdown,
+          suggestedExpensesTotal: Math.round(Math.min(breakdownSum, availableForExpenses)),
+          monthlySavings: Math.max(0, Math.round(totalIncome - availableForExpenses - totalEmi)),
+        }
+      } else {
+        clampedStructured = { ...structured, budgetBreakdown: breakdown }
+      }
+    }
     return NextResponse.json({
       plan: planText,
-      structured: structured ?? undefined,
+      structured: clampedStructured ?? undefined,
       current: {
         totalExpenses: Math.round(totalExpenses),
         totalEmi: Math.round(totalEmi),
