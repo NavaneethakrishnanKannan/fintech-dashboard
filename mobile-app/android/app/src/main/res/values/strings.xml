@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Wealth SaaS</string>
+    <string name="title_activity_main">Wealth SaaS</string>
+    <string name="package_name">com.wealthsaas.app</string>
+    <string name="custom_url_scheme">com.wealthsaas.app</string>
+</resources>

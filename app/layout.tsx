@@ -4,6 +4,9 @@ import { Providers } from './providers'
 export const metadata = {
   title: 'Wealth SaaS',
   description: 'AI-powered wealth dashboard',
+  manifest: '/manifest.webmanifest',
+  themeColor: '#111827',
+  viewport: { width: 'device-width', initialScale: 1 },
 }
 
 export default function RootLayout({

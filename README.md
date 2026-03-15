@@ -19,3 +19,8 @@
 6. npm run dev
 
 Deploy on Vercel + Supabase for full SaaS setup.
+
+## Mobile (PWA & APK)
+
+- **PWA**: The app is installable from the browser (Add to Home Screen). See [docs/MOBILE.md](docs/MOBILE.md).
+- **APK / iOS**: Use the Capacitor app in `mobile-app/` to build a native shell that loads your deployed URL. See [mobile-app/README.md](mobile-app/README.md).
