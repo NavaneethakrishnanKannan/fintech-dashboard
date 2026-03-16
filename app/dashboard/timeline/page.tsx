@@ -68,7 +68,11 @@ export default function WealthTimelinePage() {
       {(historyByYear.length > 0 || projections.length > 0) && (
         <LineChartCard
           title="Net worth & projection"
-          data={projections.length > 0 ? projections.map((p) => ({ age: p.age, value: p.value })) : historyByYear.map((h) => ({ age: h.year, value: h.netWorth }))}
+          data={
+            projections.length > 0
+              ? projections.map((p) => ({ age: Number(p.age), value: p.value }))
+              : historyByYear.map((h) => ({ age: Number(h.year), value: h.netWorth }))
+          }
           xKey="age"
           lines={[{ dataKey: 'value', name: 'Net worth (₹)', color: '#0088FE' }]}
         />

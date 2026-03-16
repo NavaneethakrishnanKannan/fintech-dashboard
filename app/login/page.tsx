@@ -32,8 +32,6 @@ function LoginForm() {
         setLoading(false)
         return
       }
-      // Full page redirect so the session cookie is sent on the next request (avoids
-      // middleware not seeing the cookie when using router.push on Vercel/production).
       window.location.href = redirectTo
     } catch {
       setError('Something went wrong. Please try again.')
@@ -43,33 +41,15 @@ function LoginForm() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#f5f5f5',
-        padding: 24,
-      }}
-    >
-      <div
-        style={{
-          background: '#fff',
-          padding: 32,
-          borderRadius: 12,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-          width: '100%',
-          maxWidth: 400,
-        }}
-      >
-        <h1 style={{ margin: '0 0 8px', fontSize: 24 }}>Sign in</h1>
-        <p style={{ margin: '0 0 24px', color: '#666', fontSize: 14 }}>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
+      <div className="w-full max-w-md rounded-2xl bg-white dark:bg-gray-900 shadow-xl border border-gray-100 dark:border-gray-800 px-8 py-8">
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-1">Sign in</h1>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
           Use your email and password to access your dashboard.
         </p>
-        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 16 }}>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label style={{ display: 'block', fontSize: 12, marginBottom: 4, color: '#555' }}>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
               Email
             </label>
             <input
@@ -78,17 +58,11 @@ function LoginForm() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
-              style={{
-                width: '100%',
-                padding: 10,
-                border: '1px solid #ddd',
-                borderRadius: 6,
-                fontSize: 14,
-              }}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, marginBottom: 4, color: '#555' }}>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
               Password
             </label>
             <input
@@ -97,38 +71,23 @@ function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
-              style={{
-                width: '100%',
-                padding: 10,
-                border: '1px solid #ddd',
-                borderRadius: 6,
-                fontSize: 14,
-              }}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           {error && (
-            <p style={{ margin: 0, color: '#c92a2a', fontSize: 13 }}>{error}</p>
+            <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
           )}
           <button
             type="submit"
             disabled={loading || googleLoading}
-            style={{
-              padding: 12,
-              background: loading ? '#ccc' : '#0070f3',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 6,
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: loading ? 'not-allowed' : 'pointer',
-            }}
+            className="w-full inline-flex justify-center items-center rounded-lg bg-blue-600 text-white text-sm font-semibold py-2.5 mt-1 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ flex: 1, height: 1, background: '#ddd' }} />
-            <span style={{ fontSize: 12, color: '#666' }}>or</span>
-            <div style={{ flex: 1, height: 1, background: '#ddd' }} />
+          <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-500">
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+            <span>or</span>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
           </div>
           <button
             type="button"
@@ -138,23 +97,19 @@ function LoginForm() {
               setGoogleLoading(true)
               signIn('google', { callbackUrl: redirectTo, redirect: true })
             }}
-            style={{
-              padding: 12,
-              background: googleLoading ? '#ccc' : '#fff',
-              color: '#333',
-              border: '1px solid #ddd',
-              borderRadius: 6,
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: googleLoading ? 'not-allowed' : 'pointer',
-            }}
+            className="w-full inline-flex justify-center items-center rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-semibold py-2.5 text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
             {googleLoading ? 'Redirecting…' : 'Sign in with Google'}
           </button>
         </form>
-        <p style={{ marginTop: 20, fontSize: 13, color: '#666', textAlign: 'center' }}>
-          <Link href="/forgot-password" style={{ color: '#666', marginRight: 8 }}>Forgot password?</Link>
-          Don&apos;t have an account? <Link href="/signup" style={{ color: '#0070f3' }}>Sign up</Link>
+        <p className="mt-5 text-center text-xs text-gray-600 dark:text-gray-400">
+          <Link href="/forgot-password" className="hover:underline mr-2">
+            Forgot password?
+          </Link>
+          Don&apos;t have an account?{' '}
+          <Link href="/signup" className="text-blue-600 dark:text-blue-400 hover:underline">
+            Sign up
+          </Link>
         </p>
       </div>
     </div>
@@ -165,27 +120,9 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div
-          style={{
-            minHeight: '100vh',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: '#f5f5f5',
-            padding: 24,
-          }}
-        >
-          <div
-            style={{
-              background: '#fff',
-              padding: 32,
-              borderRadius: 12,
-              boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-              width: '100%',
-              maxWidth: 400,
-            }}
-          >
-            <p style={{ margin: 0, color: '#666' }}>Loading…</p>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-gray-900 shadow-xl border border-gray-100 dark:border-gray-800 px-8 py-8">
+            <p className="text-sm text-gray-600 dark:text-gray-300">Loading…</p>
           </div>
         </div>
       }

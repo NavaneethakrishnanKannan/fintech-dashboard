@@ -344,6 +344,8 @@ export default function ExpensesPage() {
 
   if (loading && !report) return <div className="py-8 text-gray-500">Loading…</div>
 
+  const hasExpenseData = expensesList.length > 0 || (report && (report.totalExpense > 0 || report.incomeInPeriod > 0))
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Expenses</h1>
@@ -361,6 +363,106 @@ export default function ExpensesPage() {
           + Add income (via Add data)
         </Link>
       </div>
+
+      {!hasExpenseData && (
+        <p className="text-xs text-gray-600 dark:text-gray-400">
+          No expenses for this month yet. Start by adding expenses from <span className="font-medium">Add data</span>,
+          or set up recurring entries, budgets, or import a CSV below.
+        </p>
+      )}
+
+      {hasExpenseData && (
+        <>
+          <DashboardCard title="Monthly report">
+            <div className="flex flex-wrap gap-4 items-center mb-4">
+              <label className="flex items-center gap-2">
+                <span className="text-sm">Month</span>
+                <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
+                    <option key={m} value={m}>{new Date(2000, m - 1).toLocaleString('default', { month: 'long' })}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2">
+                <span className="text-sm">Year</span>
+                <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1">
+                  {[year - 2, year - 1, year, year + 1].map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            {report && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div><p className="text-sm text-gray-500">Income</p><p className="font-semibold">₹{report.incomeInPeriod.toLocaleString('en-IN')}</p></div>
+                <div><p className="text-sm text-gray-500">Expenses</p><p className="font-semibold">₹{report.totalExpense.toLocaleString('en-IN')}</p></div>
+                <div><p className="text-sm text-gray-500">Savings rate</p><p className="font-semibold">{(report.savingsRate * 100).toFixed(1)}%</p></div>
+              </div>
+            )}
+          </DashboardCard>
+
+          <DashboardCard title="Expense list">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">For {new Date(year, month - 1).toLocaleString('default', { month: 'long' })} {year}. Edit or delete entries.</p>
+            {expensesList.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400">No expenses in this period.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 dark:border-gray-600 text-left">
+                      <th className="py-2 pr-2">Date</th>
+                      <th className="py-2 pr-2">Category</th>
+                      <th className="py-2 pr-2">Amount</th>
+                      <th className="py-2 pr-2">Description</th>
+                      <th className="py-2 w-24">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expensesList.map((e) => (
+                      <tr key={e.id} className="border-b border-gray-100 dark:border-gray-700/50">
+                        {editingId === e.id ? (
+                          <>
+                            <td className="py-1.5"><input type="date" value={editForm.date} onChange={(ev) => setEditForm((f) => ({ ...f, date: ev.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 w-full max-w-[130px]" /></td>
+                            <td className="py-1.5">
+                              <select value={editForm.category} onChange={(ev) => setEditForm((f) => ({ ...f, category: ev.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1">
+                                {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                            </td>
+                            <td className="py-1.5"><input type="number" value={editForm.amount} onChange={(ev) => setEditForm((f) => ({ ...f, amount: ev.target.value }))} min="0" step="0.01" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 w-24" /></td>
+                            <td className="py-1.5"><input type="text" value={editForm.description} onChange={(ev) => setEditForm((f) => ({ ...f, description: ev.target.value }))} placeholder="Optional" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 min-w-[100px]" /></td>
+                            <td className="py-1.5">
+                              <button type="button" onClick={saveEdit} disabled={addLoading} className="text-blue-600 dark:text-blue-400 mr-1 disabled:opacity-50">Save</button>
+                              <button type="button" onClick={cancelEdit} disabled={addLoading} className="text-gray-600 dark:text-gray-400 disabled:opacity-50">Cancel</button>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="py-2">{e.date.slice(0, 10)}</td>
+                            <td className="py-2">{e.category}</td>
+                            <td className="py-2">₹{Number(e.amount).toLocaleString('en-IN')}</td>
+                            <td className="py-2 text-gray-600 dark:text-gray-400">{e.description ?? '—'}</td>
+                            <td className="py-2">
+                              <button type="button" onClick={() => startEdit(e)} className="text-blue-600 dark:text-blue-400 mr-2">Edit</button>
+                              <button type="button" onClick={() => deleteExpense(e.id)} disabled={addLoading} className="text-red-600 dark:text-red-400 disabled:opacity-50">Delete</button>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </DashboardCard>
+
+          {report && report.byCategory.length > 0 && (
+            <>
+              <PieChartCard title="Spending by category" data={report.byCategory.map((c) => ({ name: c.category, value: c.amount }))} />
+              <BarChartCard title="Category breakdown" data={report.byCategory} xKey="category" barKey="amount" />
+            </>
+          )}
+        </>
+      )}
 
       <DashboardCard title="Recurring (expenses &amp; income)">
         <div className="flex items-center justify-between mb-2">
@@ -524,96 +626,9 @@ export default function ExpensesPage() {
         )}
       </DashboardCard>
 
-      <DashboardCard title="Monthly report">
-        <div className="flex flex-wrap gap-4 items-center mb-4">
-          <label className="flex items-center gap-2">
-            <span className="text-sm">Month</span>
-            <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
-                <option key={m} value={m}>{new Date(2000, m - 1).toLocaleString('default', { month: 'long' })}</option>
-              ))}
-            </select>
-          </label>
-          <label className="flex items-center gap-2">
-            <span className="text-sm">Year</span>
-            <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1">
-              {[year - 2, year - 1, year, year + 1].map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-        {report && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div><p className="text-sm text-gray-500">Income</p><p className="font-semibold">₹{report.incomeInPeriod.toLocaleString('en-IN')}</p></div>
-            <div><p className="text-sm text-gray-500">Expenses</p><p className="font-semibold">₹{report.totalExpense.toLocaleString('en-IN')}</p></div>
-            <div><p className="text-sm text-gray-500">Savings rate</p><p className="font-semibold">{(report.savingsRate * 100).toFixed(1)}%</p></div>
-          </div>
-        )}
-      </DashboardCard>
-
-      <DashboardCard title="Expense list">
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">For {new Date(year, month - 1).toLocaleString('default', { month: 'long' })} {year}. Edit or delete entries.</p>
-        {expensesList.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400">No expenses in this period.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-600 text-left">
-                  <th className="py-2 pr-2">Date</th>
-                  <th className="py-2 pr-2">Category</th>
-                  <th className="py-2 pr-2">Amount</th>
-                  <th className="py-2 pr-2">Description</th>
-                  <th className="py-2 w-24">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {expensesList.map((e) => (
-                  <tr key={e.id} className="border-b border-gray-100 dark:border-gray-700/50">
-                    {editingId === e.id ? (
-                      <>
-                        <td className="py-1.5"><input type="date" value={editForm.date} onChange={(ev) => setEditForm((f) => ({ ...f, date: ev.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 w-full max-w-[130px]" /></td>
-                        <td className="py-1.5">
-                          <select value={editForm.category} onChange={(ev) => setEditForm((f) => ({ ...f, category: ev.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1">
-                            {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                          </select>
-                        </td>
-                        <td className="py-1.5"><input type="number" value={editForm.amount} onChange={(ev) => setEditForm((f) => ({ ...f, amount: ev.target.value }))} min="0" step="0.01" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 w-24" /></td>
-                        <td className="py-1.5"><input type="text" value={editForm.description} onChange={(ev) => setEditForm((f) => ({ ...f, description: ev.target.value }))} placeholder="Optional" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 min-w-[100px]" /></td>
-                        <td className="py-1.5">
-                          <button type="button" onClick={saveEdit} disabled={addLoading} className="text-blue-600 dark:text-blue-400 mr-1 disabled:opacity-50">Save</button>
-                          <button type="button" onClick={cancelEdit} disabled={addLoading} className="text-gray-600 dark:text-gray-400 disabled:opacity-50">Cancel</button>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="py-2">{e.date.slice(0, 10)}</td>
-                        <td className="py-2">{e.category}</td>
-                        <td className="py-2">₹{Number(e.amount).toLocaleString('en-IN')}</td>
-                        <td className="py-2 text-gray-600 dark:text-gray-400">{e.description ?? '—'}</td>
-                        <td className="py-2">
-                          <button type="button" onClick={() => startEdit(e)} className="text-blue-600 dark:text-blue-400 mr-2">Edit</button>
-                          <button type="button" onClick={() => deleteExpense(e.id)} disabled={addLoading} className="text-red-600 dark:text-red-400 disabled:opacity-50">Delete</button>
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </DashboardCard>
-
-      {report && (
-        <>
-          <PieChartCard title="Spending by category" data={report.byCategory.map((c) => ({ name: c.category, value: c.amount }))} />
-          <BarChartCard title="Category breakdown" data={report.byCategory} xKey="category" barKey="amount" />
-        </>
+      {report && !hasExpenseData && report.byCategory.length === 0 && (
+        <p className="text-gray-500">No expense data for this period.</p>
       )}
-
-      {report?.byCategory.length === 0 && <p className="text-gray-500">No expense data for this period.</p>}
     </div>
   )
 }
