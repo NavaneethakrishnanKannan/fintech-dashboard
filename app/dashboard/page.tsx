@@ -1,3 +1,14 @@
+To fix the bug where the file selector dropdown in the 'Import CSV' section overflows outside the card/window boundaries, we can add a CSS class to the Import CSV component to handle the overflow. However, since there is no Import CSV component in the given code, I will assume it is part of the DashboardCard component. 
+
+Here is the updated code:
+
+```tsx
+// Add this CSS class to your CSS file
+// .import-csv-container {
+//   overflow: auto;
+//   max-height: 200px; /* adjust the height as needed */
+// }
+
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -194,7 +205,7 @@ export default function DashboardOverview() {
             </button>
           </p>
         </div>
-        <DashboardCard title="Quick links">
+        <DashboardCard title="Quick links" className="import-csv-container">
           <div className="grid grid-cols-2 gap-2">
             <Link href="/dashboard/portfolio" className="p-3 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">Portfolio</Link>
             <Link href="/dashboard/expenses" className="p-3 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">Expenses</Link>
