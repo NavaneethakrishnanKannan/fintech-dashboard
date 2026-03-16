@@ -6,10 +6,17 @@ export async function GET(req: NextRequest) {
   const userId = await getUserId()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const alerts = await prisma.alert.findMany({
+  const alertsRaw = await prisma.alert.findMany({
     where: { userId },
     orderBy: [{ read: 'asc' }, { createdAt: 'desc' }],
     take: 50,
+  })
+  // One per type for stored alerts (avoids duplicate "Concentrated portfolio" / "Low emergency fund")
+  const seenType = new Set<string>()
+  const alerts = alertsRaw.filter((a) => {
+    if (seenType.has(a.type)) return false
+    seenType.add(a.type)
+    return true
   })
 
   let budgetAlerts: { id: string; userId: string; type: string; title: string; message: string; severity: string; read: boolean; metadata: unknown; createdAt: Date }[] = []

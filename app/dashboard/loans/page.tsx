@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import axios from 'axios'
 import { DashboardCard } from '@/components/DashboardCard'
 import { SliderInput } from '@/components/SliderInput'
@@ -162,20 +163,14 @@ export default function LoansPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Loans</h1>
-
-      <DashboardCard title="Add loan">
-        <form onSubmit={submitLoan} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          <input type="text" placeholder="Loan name" value={addForm.name} onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" required />
-          <input type="number" placeholder="Principal (₹)" value={addForm.principal} onChange={(e) => setAddForm((f) => ({ ...f, principal: e.target.value }))} min="0" step="0.01" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" required />
-          <input type="number" placeholder="Interest % p.a." value={addForm.interest} onChange={(e) => setAddForm((f) => ({ ...f, interest: e.target.value }))} min="0" step="0.1" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" />
-          <input type="number" placeholder="Tenure (months left)" value={addForm.tenure} onChange={(e) => setAddForm((f) => ({ ...f, tenure: e.target.value }))} min="1" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" required />
-          <input type="number" placeholder="Total tenure (months, optional)" value={addForm.totalTenureMonths} onChange={(e) => setAddForm((f) => ({ ...f, totalTenureMonths: e.target.value }))} min="1" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" />
-          <input type="number" placeholder="EMI (₹)" value={addForm.emi} onChange={(e) => setAddForm((f) => ({ ...f, emi: e.target.value }))} min="0" step="0.01" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" required />
-          <input type="date" value={addForm.startDate} onChange={(e) => setAddForm((f) => ({ ...f, startDate: e.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" />
-          <button type="submit" disabled={addLoading} className="rounded bg-blue-600 text-white px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 sm:col-span-2">Add loan</button>
-        </form>
-        {toast && <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{toast}</p>}
-      </DashboardCard>
+      <div className="flex flex-wrap gap-3 text-xs">
+        <Link
+          href="/dashboard/add-data?section=loans"
+          className="inline-flex items-center rounded-full border border-blue-200 dark:border-blue-800 px-3 py-1 text-blue-700 dark:text-blue-200 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+        >
+          + Add loan (via Add data)
+        </Link>
+      </div>
 
       {editingLoanId && (
         <DashboardCard title="Edit loan">

@@ -111,19 +111,14 @@ export default function GoalsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Goals</h1>
-
-      <DashboardCard title="Add goal">
-        <form onSubmit={submitGoal} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          <input type="text" placeholder="Goal title" value={addForm.title} onChange={(e) => setAddForm((f) => ({ ...f, title: e.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" required />
-          <input type="number" placeholder="Target amount (₹)" value={addForm.targetAmount} onChange={(e) => setAddForm((f) => ({ ...f, targetAmount: e.target.value }))} min="0" step="0.01" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" required />
-          <input type="number" placeholder="Current amount (₹)" value={addForm.currentAmount} onChange={(e) => setAddForm((f) => ({ ...f, currentAmount: e.target.value }))} min="0" step="0.01" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" />
-          <input type="date" placeholder="Target date" value={addForm.targetDate} onChange={(e) => setAddForm((f) => ({ ...f, targetDate: e.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" />
-          <input type="number" placeholder="Target year (if no date)" value={addForm.targetYear} onChange={(e) => setAddForm((f) => ({ ...f, targetYear: e.target.value }))} min={new Date().getFullYear()} max={2100} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" />
-          <input type="number" placeholder="Expected return % (optional)" value={addForm.expectedReturnRate} onChange={(e) => setAddForm((f) => ({ ...f, expectedReturnRate: e.target.value }))} min="0" max="30" step="0.5" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" />
-          <button type="submit" disabled={addLoading} className="rounded bg-blue-600 text-white px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 sm:col-span-2">Add goal</button>
-        </form>
-        {toast && <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{toast}</p>}
-      </DashboardCard>
+      <div className="flex flex-wrap gap-3 text-xs">
+        <Link
+          href="/dashboard/add-data?section=goals"
+          className="inline-flex items-center rounded-full border border-blue-200 dark:border-blue-800 px-3 py-1 text-blue-700 dark:text-blue-200 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+        >
+          + Add goal (via Add data)
+        </Link>
+      </div>
 
       <DashboardCard title="Your goals">
         <ul className="space-y-2">
@@ -162,11 +157,12 @@ export default function GoalsPage() {
 
       {selectedGoalId && projection && (
         <DashboardCard title="Goal projection &amp; suggested SIP">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
             <div><p className="text-sm text-gray-500">Progress</p><p className="font-semibold">{projection.progressPercent.toFixed(1)}%</p></div>
-            <div><p className="text-sm text-gray-500">Suggested monthly SIP</p><p className="font-semibold">₹{projection.requiredMonthlyInvestment.toLocaleString('en-IN')}</p></div>
+            <div><p className="text-sm text-gray-500">Required monthly</p><p className="font-semibold">₹{projection.requiredMonthlyInvestment.toLocaleString('en-IN')}</p></div>
             <div><p className="text-sm text-gray-500">Months left</p><p className="font-semibold">{projection.monthsLeft}</p></div>
-            <div><p className="text-sm text-gray-500">Projected at target</p><p className="font-semibold">₹{projection.projectedValueAtTarget.toLocaleString('en-IN')}</p></div>
+            <div><p className="text-sm text-gray-500">Projected completion</p><p className="font-semibold">{(() => { const d = new Date(); d.setMonth(d.getMonth() + projection.monthsLeft); return d.toLocaleDateString('en-IN'); })()}</p></div>
+            <div><p className="text-sm text-gray-500">Value at target</p><p className="font-semibold">₹{projection.projectedValueAtTarget.toLocaleString('en-IN')}</p></div>
           </div>
           {timelineData.length > 0 && (
             <LineChartCard

@@ -164,6 +164,10 @@ export async function POST() {
   }
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { checkRateLimit } = await import('@/lib/rateLimit')
+  const { ok } = checkRateLimit(userId)
+  if (!ok) return NextResponse.json({ error: 'Too many requests. Please try again in a minute.' }, { status: 429 })
+
   if (!GEMINI_API_KEY && !GROQ_API_KEY) {
     console.warn('[ai/advice] No GEMINI_API_KEY or GROQ_API_KEY set in environment')
     return NextResponse.json({ error: 'AI advice not configured', details: 'Set GEMINI_API_KEY or GROQ_API_KEY in deployment environment.' }, { status: 503 })

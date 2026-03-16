@@ -307,6 +307,13 @@ export default function PlannerPage() {
                             const suggested = row.amount
                             const reduceBy = current > suggested ? current - suggested : 0
                             const increaseBy = suggested > current ? suggested - current : 0
+                            const baseNote = row.note ?? '—'
+                            let displayNote = baseNote
+                            if (current === 0 && suggested > 0 && /reduce/i.test(baseNote)) {
+                              displayNote = 'Budget a small amount here; current spend is ₹0.'
+                            } else if (increaseBy > 0 && /reduce/i.test(baseNote)) {
+                              displayNote = 'Increase slightly if needed; current spend is lower.'
+                            }
                             totalCurrent += current
                             totalSuggested += suggested
                             totalReduceBy += reduceBy
@@ -318,7 +325,7 @@ export default function PlannerPage() {
                                 <td className="py-2.5 px-2 text-right whitespace-nowrap">
                                   {reduceBy > 0 ? <span className="font-medium text-green-600 dark:text-green-400">{formatRupee(reduceBy)}</span> : increaseBy > 0 ? <span className="font-medium text-amber-600 dark:text-amber-400">+{formatRupee(increaseBy)}</span> : '—'}
                                 </td>
-                                <td className="py-2.5 pl-3 text-gray-500 dark:text-gray-400">{row.note ?? '—'}</td>
+                                <td className="py-2.5 pl-3 text-gray-500 dark:text-gray-400">{displayNote}</td>
                               </tr>
                             )
                           })}

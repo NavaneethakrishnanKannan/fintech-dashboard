@@ -4,6 +4,15 @@ import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { DashboardCard } from '@/components/DashboardCard'
 
+type Section80CResponse = {
+  limit80C: number
+  used80C: number
+  remaining80C: number
+  potentialTaxSaving30: number
+  potentialTaxSaving20: number
+  suggestions: string[]
+}
+
 type CapitalGainsResponse = {
   ltcg: number
   stcg: number
@@ -24,6 +33,7 @@ type CapitalGainsResponse = {
 
 export default function TaxPage() {
   const { data, error, mutate, isLoading } = useSWR<CapitalGainsResponse>('/api/tax/capital-gains')
+  const { data: section80C } = useSWR<Section80CResponse>('/api/tax/section80c')
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
 
@@ -82,6 +92,27 @@ export default function TaxPage() {
           </div>
         </div>
       </DashboardCard>
+
+      {section80C && (
+        <DashboardCard title="Tax optimization (80C)">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+            Section 80C limit: ₹1.5L per financial year. Use for ELSS, PPF, EPF, etc.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Remaining limit</p>
+              <p className="font-semibold">₹{section80C.remaining80C.toLocaleString('en-IN')}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Potential saving (30% slab)</p>
+              <p className="font-semibold text-green-600 dark:text-green-400">₹{section80C.potentialTaxSaving30.toLocaleString('en-IN')}</p>
+            </div>
+          </div>
+          <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 space-y-1">
+            {section80C.suggestions.map((s, i) => <li key={i}>{s}</li>)}
+          </ul>
+        </DashboardCard>
+      )}
 
       <DashboardCard title="By holding">
         {byHolding.length === 0 ? (

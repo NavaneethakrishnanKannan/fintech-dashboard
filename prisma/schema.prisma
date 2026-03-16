@@ -27,6 +27,16 @@ model User {
   budgets   Budget[]
   netWorthHistories NetWorthHistory[]
   zerodhaConnection ZerodhaConnection?
+  onboardingCompletion OnboardingCompletion?
+  financialSnapshots  FinancialSnapshot[]
+}
+
+model OnboardingCompletion {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  completedAt DateTime @default(now())
+  payload     Json?    // snapshot of onboarding answers for report
 }
 
 model ZerodhaConnection {
@@ -167,4 +177,18 @@ model NetWorthHistory {
   netWorth   Float
   createdAt  DateTime @default(now())
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model FinancialSnapshot {
+  id                     String   @id @default(cuid())
+  userId                 String
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monthlyIncome          Float    @default(0)
+  fixedExpensesTotal     Float    @default(0)
+  estimatedVariableExpenses Float  @default(0)
+  totalInvestments       Float    @default(0)
+  totalLoans             Float    @default(0)
+  primaryGoal            String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import useSWR from 'swr'
 import axios from 'axios'
 import { DashboardCard } from '@/components/DashboardCard'
@@ -40,8 +41,18 @@ export default function ExpensesPage() {
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [year, setYear] = useState(new Date().getFullYear())
   const [loading, setLoading] = useState(true)
-  const [expenseForm, setExpenseForm] = useState({ amount: '', category: 'Food', description: '', date: new Date().toISOString().slice(0, 10) })
-  const [incomeForm, setIncomeForm] = useState({ amount: '', category: 'Salary' })
+  const [expenseForm, setExpenseForm] = useState({
+    amount: '',
+    category: 'Food',
+    description: '',
+    date: new Date().toISOString().slice(0, 10),
+    repeat: false,
+  })
+  const [incomeForm, setIncomeForm] = useState({
+    amount: '',
+    category: 'Salary',
+    repeat: false,
+  })
   const [addLoading, setAddLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [expensesList, setExpensesList] = useState<ExpenseRow[]>([])
@@ -57,6 +68,8 @@ export default function ExpensesPage() {
   const { data: recurringTemplates = [], mutate: mutateRecurring } = useSWR<RecurringTemplate[]>('/api/recurring')
   const [recurringForm, setRecurringForm] = useState({ type: 'expense' as 'expense' | 'income', amount: '', category: 'Food', description: '', frequency: 'monthly', startDate: new Date().toISOString().slice(0, 10) })
   const [recurringLoading, setRecurringLoading] = useState(false)
+  const [showRecurringForm, setShowRecurringForm] = useState(true)
+  const [showBudgetForm, setShowBudgetForm] = useState(true)
 
   const loadBudgets = async () => {
     try {
@@ -91,6 +104,20 @@ export default function ExpensesPage() {
 
   useEffect(() => { load() }, [month, year])
   useEffect(() => { loadBudgets() }, [])
+
+  useEffect(() => {
+    // If user already has recurring templates, collapse add form by default
+    if (recurringTemplates.length > 0) {
+      setShowRecurringForm(false)
+    }
+  }, [recurringTemplates.length])
+
+  useEffect(() => {
+    // If budgets exist, collapse add form by default
+    if (budgets.length > 0) {
+      setShowBudgetForm(false)
+    }
+  }, [budgets.length])
 
   const addBudget = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -177,13 +204,36 @@ export default function ExpensesPage() {
     setAddLoading(true)
     setToast(null)
     try {
+      const amountNumber = Number(expenseForm.amount)
       await axios.post('/api/expenses', {
         amount: Number(expenseForm.amount),
         category: expenseForm.category,
         description: expenseForm.description.trim() || undefined,
         date: expenseForm.date || new Date().toISOString().slice(0, 10),
       })
-      setExpenseForm({ amount: '', category: 'Food', description: '', date: new Date().toISOString().slice(0, 10) })
+      // If user marked this as recurring, also create a recurring template (monthly by default)
+      if (expenseForm.repeat && amountNumber > 0) {
+        try {
+          await axios.post('/api/recurring', {
+            type: 'expense',
+            amount: amountNumber,
+            category: expenseForm.category,
+            description: expenseForm.description.trim() || null,
+            frequency: 'monthly',
+            startDate: expenseForm.date || new Date().toISOString().slice(0, 10),
+          })
+          mutateRecurring()
+        } catch {
+          // soft-fail: don't block expense creation if recurring template fails
+        }
+      }
+      setExpenseForm({
+        amount: '',
+        category: 'Food',
+        description: '',
+        date: new Date().toISOString().slice(0, 10),
+        repeat: false,
+      })
       setToast('Expense added.')
       load()
     } catch {
@@ -199,8 +249,24 @@ export default function ExpensesPage() {
     setAddLoading(true)
     setToast(null)
     try {
-      await axios.post('/api/incomes', { amount: Number(incomeForm.amount), category: incomeForm.category })
-      setIncomeForm({ amount: '', category: 'Salary' })
+      const amountNumber = Number(incomeForm.amount)
+      await axios.post('/api/incomes', { amount: amountNumber, category: incomeForm.category })
+      // If marked as recurring, also create a recurring income template
+      if (incomeForm.repeat && amountNumber > 0) {
+        try {
+          await axios.post('/api/recurring', {
+            type: 'income',
+            amount: amountNumber,
+            category: INCOME_CATEGORIES.includes(incomeForm.category) ? incomeForm.category : 'Salary',
+            frequency: 'monthly',
+            startDate: new Date().toISOString().slice(0, 10),
+          })
+          mutateRecurring()
+        } catch {
+          // soft-fail
+        }
+      }
+      setIncomeForm({ amount: '', category: 'Salary', repeat: false })
       setToast('Income added.')
       load()
     } catch {
@@ -281,32 +347,35 @@ export default function ExpensesPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Expenses</h1>
-
-      <DashboardCard title="Add expense">
-        <form onSubmit={submitExpense} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          <input type="number" placeholder="Amount (₹)" value={expenseForm.amount} onChange={(e) => setExpenseForm((f) => ({ ...f, amount: e.target.value }))} min="0" step="0.01" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" required />
-          <select value={expenseForm.category} onChange={(e) => setExpenseForm((f) => ({ ...f, category: e.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm">
-            {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <input type="text" placeholder="Description (optional)" value={expenseForm.description} onChange={(e) => setExpenseForm((f) => ({ ...f, description: e.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" />
-          <input type="date" value={expenseForm.date} onChange={(e) => setExpenseForm((f) => ({ ...f, date: e.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" />
-          <button type="submit" disabled={addLoading} className="rounded bg-blue-600 text-white px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">Add expense</button>
-        </form>
-        {toast && <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{toast}</p>}
-      </DashboardCard>
-
-      <DashboardCard title="Add income">
-        <form onSubmit={submitIncome} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
-          <input type="number" placeholder="Amount (₹)" value={incomeForm.amount} onChange={(e) => setIncomeForm((f) => ({ ...f, amount: e.target.value }))} min="0" step="0.01" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" required />
-          <select value={incomeForm.category} onChange={(e) => setIncomeForm((f) => ({ ...f, category: e.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm">
-            {INCOME_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <button type="submit" disabled={addLoading} className="rounded bg-blue-600 text-white px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">Add income</button>
-        </form>
-      </DashboardCard>
+      <div className="flex flex-wrap gap-3 text-xs">
+        <Link
+          href="/dashboard/add-data?section=expenses"
+          className="inline-flex items-center rounded-full border border-blue-200 dark:border-blue-800 px-3 py-1 text-blue-700 dark:text-blue-200 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+        >
+          + Add expense (via Add data)
+        </Link>
+        <Link
+          href="/dashboard/add-data?section=income"
+          className="inline-flex items-center rounded-full border border-blue-200 dark:border-blue-800 px-3 py-1 text-blue-700 dark:text-blue-200 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+        >
+          + Add income (via Add data)
+        </Link>
+      </div>
 
       <DashboardCard title="Recurring (expenses &amp; income)">
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Auto-create entries on a schedule. A daily cron runs at midnight (Vercel); set CRON_SECRET to secure the endpoint.</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Auto-create entries on a schedule. A daily cron runs at midnight (Vercel); set CRON_SECRET to secure the endpoint.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowRecurringForm((v) => !v)}
+            className="text-xs font-medium text-blue-700 dark:text-blue-300 hover:underline"
+          >
+            {showRecurringForm ? 'Hide form' : 'Add new recurring'}
+          </button>
+        </div>
+        {showRecurringForm && (
         <form onSubmit={submitRecurring} className="flex flex-wrap items-end gap-3 mb-4">
           <div>
             <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Type</label>
@@ -345,12 +414,32 @@ export default function ExpensesPage() {
           </div>
           <button type="submit" disabled={recurringLoading} className="rounded bg-blue-600 text-white px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">Add recurring</button>
         </form>
+        )}
         {recurringTemplates.length > 0 ? (
           <ul className="text-sm space-y-1">
             {recurringTemplates.map((t) => (
-              <li key={t.id} className="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700 last:border-0">
-                <span>{t.type === 'expense' ? 'Expense' : 'Income'} — ₹{t.amount.toLocaleString('en-IN')} / {t.frequency} — {t.category} — next: {t.nextRun.slice(0, 10)}</span>
-                <button type="button" onClick={() => deleteRecurring(t.id)} className="text-red-600 dark:text-red-400 text-xs">Remove</button>
+              <li
+                key={t.id}
+                className="flex items-center justify-between py-1.5 border-b border-gray-100 dark:border-gray-700 last:border-0"
+              >
+                <span>
+                  <span className="font-medium">
+                    {t.category}{' '}
+                    <span className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:text-blue-200 align-middle">
+                      recurring
+                    </span>
+                  </span>{' '}
+                  — {t.type === 'expense' ? 'Expense' : 'Income'} — ₹
+                  {t.amount.toLocaleString('en-IN')} / {t.frequency} — next:{' '}
+                  {t.nextRun.slice(0, 10)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => deleteRecurring(t.id)}
+                  className="text-red-600 dark:text-red-400 text-xs"
+                >
+                  Remove
+                </button>
               </li>
             ))}
           </ul>
@@ -360,7 +449,19 @@ export default function ExpensesPage() {
       </DashboardCard>
 
       <DashboardCard title="Budgets">
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Set monthly limits. You’ll get an alert when spending exceeds a budget.</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Set monthly limits. You’ll get an alert when spending exceeds a budget.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowBudgetForm((v) => !v)}
+            className="text-xs font-medium text-blue-700 dark:text-blue-300 hover:underline"
+          >
+            {showBudgetForm ? 'Hide form' : 'Add budget'}
+          </button>
+        </div>
+        {showBudgetForm && (
         <form onSubmit={addBudget} className="flex flex-wrap items-end gap-3 mb-4">
           <div>
             <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Category</label>
@@ -376,6 +477,7 @@ export default function ExpensesPage() {
           </div>
           <button type="submit" disabled={budgetLoading} className="rounded bg-blue-600 text-white px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">Set budget</button>
         </form>
+        )}
         {budgets.length > 0 ? (
           <ul className="space-y-1 text-sm">
             {budgets.map((b) => (

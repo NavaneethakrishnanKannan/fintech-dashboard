@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
@@ -10,13 +10,20 @@ type ExportFormat = 'csv' | 'pdf' | 'xlsx'
 
 const nav = [
   { href: '/dashboard', label: 'Dashboard' },
+  { href: '/dashboard/onboarding', label: 'Onboarding' },
+  { href: '/dashboard/add-data', label: 'Add data' },
   { href: '/dashboard/portfolio', label: 'Portfolio' },
   { href: '/dashboard/expenses', label: 'Expenses' },
+  { href: '/dashboard/report', label: 'Monthly report' },
   { href: '/dashboard/loans', label: 'Loans' },
   { href: '/dashboard/goals', label: 'Goals' },
   { href: '/dashboard/health', label: 'Financial Health' },
+  { href: '/dashboard/analytics', label: 'Behavior analytics' },
   { href: '/dashboard/tax', label: 'Tax (LTCG/STCG)' },
   { href: '/dashboard/planner', label: 'AI Planner' },
+  { href: '/dashboard/projection', label: 'Wealth Projection' },
+  { href: '/dashboard/timeline', label: 'Wealth timeline' },
+  { href: '/dashboard/afford', label: 'Can I afford this?' },
   { href: '/dashboard/scenario', label: 'Scenario Simulator' },
   { href: '/dashboard/fire', label: 'FIRE Calculator' },
   { href: '/dashboard/ai', label: 'AI Advisor' },
@@ -28,6 +35,33 @@ export function Sidebar() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const [downloadingFormat, setDownloadingFormat] = useState<ExportFormat | null>(null)
+  const [onboardingProgress, setOnboardingProgress] = useState<number | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch('/api/onboarding/status', { credentials: 'include' })
+        if (!res.ok) return
+        const data = (await res.json()) as { progress?: number; completed?: boolean }
+        if (!cancelled) {
+          if (typeof data.progress === 'number') {
+            setOnboardingProgress(Math.max(0, Math.min(100, Math.round(data.progress))))
+          } else if (data.completed) {
+            setOnboardingProgress(100)
+          } else {
+            setOnboardingProgress(0)
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handleDownload = async (format: ExportFormat) => {
     setDownloadingFormat(format)
@@ -80,20 +114,28 @@ export function Sidebar() {
           <ThemeToggle />
         </div>
         <nav className="p-2 flex-1 min-h-0 overflow-y-auto">
-          {nav.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setOpen(false)}
-              className={`block px-3 py-2 rounded-md text-sm ${
-                pathname === href
-                  ? 'bg-gray-200 dark:bg-gray-700 font-medium'
-                  : 'hover:bg-gray-100 dark:hover:bg-gray-700/50'
-              }`}
-            >
-              {label}
-            </Link>
-          ))}
+          {nav.map(({ href, label }) => {
+            const isActive = pathname === href
+            const isOnboarding = href === '/dashboard/onboarding'
+            const showProgress = isOnboarding && onboardingProgress != null
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setOpen(false)}
+                className={`flex items-center justify-between gap-2 px-3 py-2 rounded-md text-sm ${
+                  isActive ? 'bg-gray-200 dark:bg-gray-700 font-medium' : 'hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                }`}
+              >
+                <span>{label}</span>
+                {showProgress && (
+                  <span className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/40 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-200">
+                    {onboardingProgress}%
+                  </span>
+                )}
+              </Link>
+            )
+          })}
         </nav>
         <div className="p-2 border-t border-gray-200 dark:border-gray-700 space-y-1 shrink-0">
           <div className="px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">Export</div>

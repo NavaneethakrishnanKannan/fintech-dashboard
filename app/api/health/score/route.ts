@@ -71,10 +71,11 @@ export async function GET(req: NextRequest) {
   if (emergencyMonths < 3) alertRules.push({ type: 'low_emergency_fund', title: 'Low emergency fund', message: 'Build at least 3–6 months of expenses as emergency fund.', severity: 'warning' })
   if (investments.length >= 3 && diversification < 0.4) alertRules.push({ type: 'concentrated_portfolio', title: 'Concentrated portfolio', message: 'Consider diversifying across sectors and asset classes.', severity: 'info' })
 
+  // Only create an alert if no alert of this type exists in the last 48 hours (read or unread)
+  const since = new Date(Date.now() - 48 * 60 * 60 * 1000)
   const recent = await prisma.alert.findMany({
-    where: { userId, read: false },
-    orderBy: { createdAt: 'desc' },
-    take: 20,
+    where: { userId, createdAt: { gte: since } },
+    select: { type: true },
   })
   const recentTypes = new Set(recent.map((a) => a.type))
   for (const rule of alertRules) {

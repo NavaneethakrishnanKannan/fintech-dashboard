@@ -26,11 +26,13 @@ type Summary = {
 
 type Alert = { id: string; type: string; title: string; message: string; severity: string | null; read: boolean; createdAt: string }
 type NetWorthPoint = { date: string; netWorth: number }
+type InsightsRes = { insights: string[] }
 
 export default function DashboardOverview() {
   const [summary, setSummary] = useState<Summary | null>(null)
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [history, setHistory] = useState<NetWorthPoint[]>([])
+  const [insights, setInsights] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [recomputeLoading, setRecomputeLoading] = useState(false)
@@ -41,7 +43,7 @@ export default function DashboardOverview() {
       setLoading(true)
       setError(null)
       let summaryError: 'unauthorized' | 'failed' | null = null
-      const [sumRes, alertsRes, histRes] = await Promise.all([
+      const [sumRes, alertsRes, histRes, insightsRes] = await Promise.all([
         axios.get<Summary>('/api/summary').catch((e: { response?: { status?: number } }) => {
           if (e?.response?.status === 401) summaryError = 'unauthorized'
           else summaryError = 'failed'
@@ -49,6 +51,7 @@ export default function DashboardOverview() {
         }),
         axios.get<Alert[]>('/api/alerts').catch(() => ({ data: [] })),
         axios.get<NetWorthPoint[]>('/api/networth/history').catch(() => ({ data: [] })),
+        axios.get<InsightsRes>('/api/insights').catch(() => ({ data: { insights: [] } })),
       ])
       const summaryData = sumRes.data as Summary | null | undefined
       if (summaryData && typeof summaryData === 'object' && summaryData.KPIs) {
@@ -143,6 +146,19 @@ export default function DashboardOverview() {
           <StatCard label="Zerodha portfolio" value={fmt(zerodhaValue)} sub="Linked account" />
         )}
       </section>
+
+      {insights.length > 0 && (
+        <DashboardCard title="Smart insights">
+          <ul className="space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
+            {insights.map((line, i) => (
+              <li key={i} className="flex gap-2">
+                <span className="text-green-600 dark:text-green-400 shrink-0">•</span>
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
+        </DashboardCard>
+      )}
 
       {alerts.filter((a) => !a.read).length > 0 && (
         <DashboardCard title="Alerts">

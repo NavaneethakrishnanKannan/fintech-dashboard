@@ -102,7 +102,8 @@ function extractStructured(raw: string): { plan: string; structured: StructuredP
     }
     jsonStr = trimmed.slice(jsonStart, end)
   }
-  if (!jsonStr) return { plan: trimmed, structured: null }
+  const planOnly = jsonStart > 0 ? trimmed.slice(0, jsonStart).trim() : trimmed
+  if (!jsonStr) return { plan: planOnly, structured: null }
   // Remove commas inside numbers so "78,810" becomes 78810 (valid JSON)
   const noCommaNumbers = jsonStr.replace(/:(\s*)([\d,]+)(\s*[,}\]])/g, (_, s1, num, s2) => `:${s1}${num.replace(/,/g, '')}${s2}`)
   let repaired = noCommaNumbers
@@ -110,8 +111,10 @@ function extractStructured(raw: string): { plan: string; structured: StructuredP
     .replace(/\}\s*,\s*"\s*\{\s*"category"/g, '"},{"category"') // fix "}, "{"category" typo in budgetBreakdown
   try {
     let structured = JSON.parse(repaired) as StructuredPlan
-    const plan = jsonStart > 0 ? trimmed.slice(0, jsonStart).trim() : trimmed
-    if (typeof structured.suggestedExpensesTotal !== 'number' || typeof structured.monthlySavings !== 'number') return { plan: trimmed, structured: null }
+    if (typeof structured.suggestedExpensesTotal !== 'number' || typeof structured.monthlySavings !== 'number') {
+      // JSON shape is wrong; still hide the JSON from the user and just return the narrative
+      return { plan: planOnly, structured: null }
+    }
     if (!Array.isArray(structured.budgetBreakdown)) structured.budgetBreakdown = []
     if (!Array.isArray(structured.allocations)) {
       const allocMatch = jsonStr.match(/\{"purpose"\s*:\s*"[^"]*"\s*,\s*"amount"\s*:\s*\d+/g)
@@ -121,25 +124,30 @@ function extractStructured(raw: string): { plan: string; structured: StructuredP
         return { purpose, amount }
       }) : []
     }
-    return { plan: plan || trimmed, structured }
+    return { plan: planOnly || trimmed, structured }
   } catch {
     try {
       const structured = JSON.parse(noCommaNumbers) as StructuredPlan
       if (typeof structured.suggestedExpensesTotal === 'number' && typeof structured.monthlySavings === 'number') {
         if (!Array.isArray(structured.budgetBreakdown)) structured.budgetBreakdown = []
         if (!Array.isArray(structured.allocations)) structured.allocations = []
-        return { plan: trimmed.slice(0, jsonStart).trim(), structured }
+        return { plan: planOnly, structured }
       }
     } catch {
       // ignore
     }
-    return { plan: trimmed, structured: null }
+    // Parsing failed completely; never show raw JSON to the user, just the narrative part
+    return { plan: planOnly, structured: null }
   }
 }
 
 export async function POST() {
   const userId = await getUserId()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { checkRateLimit } = await import('@/lib/rateLimit')
+  const { ok } = checkRateLimit(userId)
+  if (!ok) return NextResponse.json({ error: 'Too many requests. Please try again in a minute.' }, { status: 429 })
 
   const [investments, expenses, incomes, loans, goals, zerodhaConn] = await Promise.all([
     prisma.investment.findMany({ where: { userId } }),

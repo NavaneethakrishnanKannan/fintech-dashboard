@@ -253,39 +253,14 @@ export default function PortfolioPage() {
         )}
       </DashboardCard>
 
-      <DashboardCard title="Add investment">
-        <form onSubmit={submitInvestment} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <input type="text" placeholder="Name" value={addForm.name} onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" required />
-          <select value={addForm.type} onChange={(e) => setAddForm((f) => ({ ...f, type: e.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm">
-            <option value="STOCK">Stock</option>
-            <option value="MUTUAL_FUND">Mutual fund</option>
-            <option value="CHIT_FUND">Chit fund</option>
-            <option value="ETF">ETF</option>
-            <option value="CRYPTO">Crypto</option>
-            <option value="OTHER">Other</option>
-          </select>
-          <input type="number" placeholder="Quantity" value={addForm.quantity} onChange={(e) => setAddForm((f) => ({ ...f, quantity: e.target.value }))} min="0.0001" step="any" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" />
-          <input type="number" placeholder="Purchase price (₹)" value={addForm.buyPrice} onChange={(e) => setAddForm((f) => ({ ...f, buyPrice: e.target.value }))} min="0" step="0.01" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" required />
-          <input type="number" placeholder="Current price (₹, optional)" value={addForm.currentPrice} onChange={(e) => setAddForm((f) => ({ ...f, currentPrice: e.target.value }))} min="0" step="0.01" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" />
-          <input type="date" value={addForm.buyDate} onChange={(e) => setAddForm((f) => ({ ...f, buyDate: e.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" />
-          <input type="text" placeholder="Sector (optional)" value={addForm.sector} onChange={(e) => setAddForm((f) => ({ ...f, sector: e.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" />
-          <select value={addForm.category} onChange={(e) => setAddForm((f) => ({ ...f, category: e.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm">
-            <option value="">Category (optional)</option>
-            <option value="equity">Equity</option>
-            <option value="debt">Debt</option>
-            <option value="gold">Gold</option>
-          </select>
-          <input type="number" placeholder="Monthly SIP (₹, optional)" value={addForm.monthlySip} onChange={(e) => setAddForm((f) => ({ ...f, monthlySip: e.target.value }))} min="0" step="100" className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" />
-          <select value={addForm.goalId} onChange={(e) => setAddForm((f) => ({ ...f, goalId: e.target.value }))} className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm" title="Funded by goal">
-            <option value="">No goal</option>
-            {goals.map((g) => (
-              <option key={g.id} value={g.id}>{g.title}</option>
-            ))}
-          </select>
-          <button type="submit" disabled={addLoading} className="rounded bg-blue-600 text-white px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 sm:col-span-2">Add</button>
-        </form>
-        {toast && <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{toast}</p>}
-      </DashboardCard>
+      <div className="flex flex-wrap gap-3 text-xs">
+        <Link
+          href="/dashboard/add-data?section=investments"
+          className="inline-flex items-center rounded-full border border-blue-200 dark:border-blue-800 px-3 py-1 text-blue-700 dark:text-blue-200 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+        >
+          + Add investment (via Add data)
+        </Link>
+      </div>
 
       <DashboardCard title="Holdings">
         {combined?.zerodhaConnected && !combined?.zerodhaError && (
