@@ -194,9 +194,14 @@ export default function DashboardOverview() {
             </button>
           </p>
         </div>
-        <DashboardCard title="Quick links">
+        <DashboardCard title="Import CSV" className="overflow-auto max-h-96">
           <div className="grid grid-cols-2 gap-2">
             <Link href="/dashboard/portfolio" className="p-3 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">Portfolio</Link>
+            <select className="p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+              <option value="">Select File</option>
+              <option value="file1">File 1</option>
+              <option value="file2">File 2</option>
+            </select>
             <Link href="/dashboard/expenses" className="p-3 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">Expenses</Link>
             <Link href="/dashboard/loans" className="p-3 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">Loans</Link>
             <Link href="/dashboard/goals" className="p-3 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">Goals</Link>
